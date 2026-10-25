@@ -215,7 +215,8 @@ table.st { width: 100%; border-collapse: separate; border-spacing: 4px; margin: 
     var lbl = e.r ? 'Partie ' + (e.r.i + 1) + ' · ' + esc(String(e.r.l).replace(/^([A-D])([W-Z])$/, '$1 – $2')) : 'Match simple';
     var h = '<div class="live' + (e.fin ? ' fin' : '') + '"><div class="top"><span class="r">' + agoTxt + ' · en ' + esc(e.bo) + '</span>' +
       (e.fin ? '<span class="lbl">Terminé</span>' : '<span class="dot"></span><span class="lbl">En direct</span>') + lbl +
-      (e.r ? ' · <span class="c1">' + esc(e.r.c1) + '</span> – <span class="c2">' + esc(e.r.c2) + '</span>' : '') + '</div>';
+      (e.r ? ' · <span class="c1">' + esc(e.r.c1) + '</span> – <span class="c2">' + esc(e.r.c2) + '</span>' : '') +
+      (e.r && e.r.a ? ' · Arbitre : ' + esc(e.r.a) : '') + '</div>';
     return h + scoreTable([e.n[0], e.n[1]], [e.g[0], e.g[1]], e.h || [], e.fin ? null : [e.p[0], e.p[1]], e.fin ? -1 : e.sv) + '</div>';
   }
 
@@ -322,7 +323,8 @@ table.st { width: 100%; border-collapse: separate; border-spacing: 4px; margin: 
     var raw = String(m.detail || '').split(' '), sets = [];
     for (var j = 0; j < raw.length; j++) { var p = raw[j].split('-'); if (p.length === 2) sets.push(p); }
     return '<div class="match"><div class="top"><span class="r">' + esc(m.format || '') + (m.duree_min ? ' · ' + esc(m.duree_min) + ' min' : '') +
-      '</span>' + (label ? '<span class="lbl">' + label + '</span>' : '') + hour(m.date) + '</div>' +
+      '</span>' + (label ? '<span class="lbl">' + label + '</span>' : '') + hour(m.date) +
+      (m.arbitre ? ' · Arbitre : ' + esc(m.arbitre) : '') + '</div>' +
       scoreTable([m.joueur1, m.joueur2], [m.manches1, m.manches2], sets, null, -1) + '</div>';
   }
 

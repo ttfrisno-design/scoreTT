@@ -11,42 +11,59 @@
 /* Compatible Safari 9 (iPad 2) : pas de grid, pas de variables CSS */
 * { -webkit-box-sizing: border-box; box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: #10141c; color: #fff; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+a { color: inherit; text-decoration: none; }
 .wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 40px; }
 h1 { margin: 0 0 16px; font-size: 28px; }
-.bar { overflow: hidden; margin-bottom: 16px; }
+h2 { margin: 6px 0 14px; font-size: 22px; color: #cfd8e6; font-weight: normal; }
+.bar { overflow: hidden; margin-bottom: 14px; }
 .bar a, .bar button { float: left; margin: 0 8px 8px 0; padding: 12px 16px; font-size: 17px; color: #fff; background: #2a3448;
-  border: 0; border-radius: 8px; text-decoration: none; font-family: inherit; }
-.bar input { float: left; width: 260px; max-width: 100%; margin: 0 8px 8px 0; padding: 11px 12px; font-size: 17px; color: #fff;
-  background: #0f141d; border: 2px solid #33405a; border-radius: 8px; -webkit-appearance: none; }
-#status { color: #9fb0c8; font-size: 16px; margin: 6px 0 14px; }
+  border: 0; border-radius: 8px; font-family: inherit; }
+#status { color: #9fb0c8; font-size: 16px; margin: 4px 0 14px; }
 #status.err { color: #ff8f8c; }
-.stats { overflow: hidden; margin-bottom: 18px; }
-.stat { float: left; margin: 0 10px 10px 0; padding: 10px 14px; background: #1b2230; border-radius: 10px; font-size: 15px; color: #9fb0c8; }
-.stat b { display: block; font-size: 22px; color: #fff; }
-.match { background: #1b2230; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; }
-.top { overflow: hidden; color: #9fb0c8; font-size: 14px; margin-bottom: 8px; }
+.c1 { color: #7fb0ff; } .c2 { color: #ff8f8c; }
+
+/* Listes cliquables (journées, rencontres) */
+.item { display: block; overflow: hidden; background: #1b2230; border-radius: 12px; padding: 16px 18px; margin-bottom: 10px; font-size: 21px; }
+.item .sub { display: block; margin-top: 4px; font-size: 15px; color: #9fb0c8; }
+.item .go { float: right; color: #5c6b82; font-size: 26px; line-height: 1; margin-top: 6px; }
+.item .score b { display: inline-block; min-width: 40px; text-align: center; padding: 2px 8px; margin: 0 8px; border-radius: 6px; background: #10141c; }
+
+/* Rencontre */
+.teamHead { text-align: center; background: #1b2230; border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+.teamHead .sc { font-size: 28px; font-weight: bold; }
+.teamHead .sc b { display: inline-block; min-width: 60px; padding: 4px 12px; margin: 0 12px; border-radius: 8px; background: #10141c; font-size: 34px; }
+.teamHead .sub { color: #9fb0c8; font-size: 15px; margin-top: 8px; }
+
+.match { background: #1b2230; border-radius: 12px; padding: 12px 16px; margin-bottom: 10px; }
+.top { overflow: hidden; color: #9fb0c8; font-size: 14px; margin-bottom: 6px; }
 .top .r { float: right; }
-.row { overflow: hidden; font-size: 21px; line-height: 32px; }
+.top .lbl { color: #fff; font-weight: bold; font-size: 16px; margin-right: 8px; }
+.row { overflow: hidden; font-size: 20px; line-height: 32px; }
 .row .n { float: left; width: 55%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .row .g { float: left; width: 36px; text-align: center; font-weight: bold; border-radius: 6px; background: #10141c; }
 .row .d { float: left; padding-left: 10px; color: #cfd8e6; font-size: 17px; }
 .row.win .n { font-weight: bold; }
 .row.win .n:after { content: " \2714"; color: #6fdc9a; font-size: 17px; }
 .empty { padding: 30px; text-align: center; color: #5c6b82; font-size: 18px; }
-@media (max-width: 600px) { .row .n { width: 45%; } .row { font-size: 18px; } }
+
+.bilan { overflow: hidden; margin-top: 22px; }
+.bilan .col { float: left; width: 48%; } .bilan .col + .col { margin-left: 4%; }
+.bilan h3 { margin: 0 0 8px; font-size: 18px; }
+.bilan .p { overflow: hidden; background: #1b2230; border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; font-size: 17px; }
+.bilan .p span { float: right; color: #9fb0c8; }
+@media (max-width: 600px) { .row .n { width: 45%; } .row { font-size: 17px; } .bilan .col { float: none; width: auto; } .bilan .col + .col { margin: 14px 0 0; } }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>&#127955; Résultats des matchs</h1>
+  <h1>&#127955; Résultats</h1>
   <div class="bar">
     <a href="./">&#8592; Tableau de score</a>
+    <a href="#" id="backLink" style="display:none">&#8592; Retour</a>
     <button id="reload">&#8635; Actualiser</button>
-    <input type="search" id="filter" placeholder="Filtrer par joueur…" autocomplete="off" autocorrect="off">
   </div>
   <div id="status">Chargement…</div>
-  <div class="stats" id="stats"></div>
-  <div id="list"></div>
+  <div id="view"></div>
 </div>
 
 <script src="config.js"></script>
@@ -54,13 +71,41 @@ h1 { margin: 0 0 16px; font-size: 28px; }
 // ES5 uniquement (Safari 9)
 (function () {
   'use strict';
-  var all = [], n = 0;
+  var all = [], loaded = false, n = 0;
+  var JOURS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
   function $(id) { return document.getElementById(id); }
-  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
   function status(t, err) { $('status').textContent = t; $('status').className = err ? 'err' : ''; }
 
+  function dayOf(m) { return m.journee || String(m.date || '').slice(0, 10); }
+  function frDay(d) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || '');
+    if (!m) return esc(d);
+    var dt = new Date(+m[1], +m[2] - 1, +m[3]);
+    return JOURS[dt.getDay()] + ' ' + m[3] + '/' + m[2] + '/' + m[1];
+  }
+  function hour(d) { var m = /(\d{2}):(\d{2})/.exec(d || ''); return m ? m[1] + 'h' + m[2] : ''; }
+  function won1(m) { return (parseInt(m.manches1, 10) || 0) > (parseInt(m.manches2, 10) || 0); }
+
+  // Une partie rejouée remplace la précédente (même rencontre, même numéro)
+  function dedupe(list) {
+    var seen = {}, out = [];
+    for (var i = list.length - 1; i >= 0; i--) {
+      var m = list[i], k = m.rencontre_id ? m.rencontre_id + '#' + m.ordre : 'id#' + m.id;
+      if (seen[k]) continue;
+      seen[k] = true; out.unshift(m);
+    }
+    return out;
+  }
+
+  function params() {
+    var o = {}, h = location.hash.replace(/^#/, '').split('&');
+    for (var i = 0; i < h.length; i++) { var p = h[i].split('='); if (p[0]) o[p[0]] = decodeURIComponent(p[1] || ''); }
+    return o;
+  }
+
   function load() {
-    if (typeof SCORE_API === 'undefined' || !SCORE_API) { status('Le serveur de résultats n\'est pas encore configuré (config.js).', true); return; }
+    if (typeof SCORE_API === 'undefined' || !SCORE_API) { status('Le serveur de résultats n\'est pas configuré (config.js).', true); return; }
     status('Chargement…');
     var name = 'ttres' + (++n) + '_' + Date.now(), s = document.createElement('script'), done = false;
     function finish(err, data) {
@@ -68,10 +113,10 @@ h1 { margin: 0 0 16px; font-size: 28px; }
       window[name] = function () {};
       if (s.parentNode) s.parentNode.removeChild(s);
       if (err || !data || !data.ok) { status('Impossible de charger les résultats. Vérifiez la connexion.', true); return; }
-      all = data.matchs || [];
-      all.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
-      status(all.length + ' match' + (all.length > 1 ? 's' : '') + ' enregistré' + (all.length > 1 ? 's' : '') + '.');
-      render();
+      all = dedupe(data.matchs || []);
+      loaded = true;
+      status('');
+      route();
     }
     window[name] = function (d) { finish(null, d); };
     s.onerror = function () { finish('reseau'); };
@@ -80,42 +125,131 @@ h1 { margin: 0 0 16px; font-size: 28px; }
     document.body.appendChild(s);
   }
 
-  function frDate(d) {
-    var m = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})/.exec(d || '');
-    return m ? m[3] + '/' + m[2] + '/' + m[1] + ' à ' + m[4].replace(':', 'h') : esc(d);
+  function route() {
+    if (!loaded) return;
+    var p = params();
+    var back = $('backLink');
+    if (p.r) { back.style.display = ''; back.href = '#j=' + encodeURIComponent(p.j); }
+    else if (p.j) { back.style.display = ''; back.href = '#'; }
+    else back.style.display = 'none';
+    if (p.j && p.r === 'libre') viewLibres(p.j);
+    else if (p.j && p.r) viewRencontre(p.j, p.r);
+    else if (p.j) viewJournee(p.j);
+    else viewJournees();
+    window.scrollTo(0, 0);
   }
 
-  function render() {
-    var f = $('filter').value.toLowerCase().replace(/^\s+|\s+$/g, '');
-    var list = [], wins = {}, html = '';
-    for (var i = 0; i < all.length; i++) {
-      var m = all[i];
-      if (f && (m.joueur1 + ' ' + m.joueur2).toLowerCase().indexOf(f) < 0) continue;
-      list.push(m);
+  // 1) Liste des journées
+  function viewJournees() {
+    var days = {}, keys = [], i, d;
+    for (i = 0; i < all.length; i++) {
+      d = dayOf(all[i]);
+      if (!days[d]) { days[d] = { renc: {}, nr: 0, libres: 0 }; keys.push(d); }
+      if (all[i].rencontre_id) { if (!days[d].renc[all[i].rencontre_id]) { days[d].renc[all[i].rencontre_id] = 1; days[d].nr++; } }
+      else days[d].libres++;
     }
+    keys.sort().reverse();
+    var h = '<h2>Choisissez une journée</h2>';
+    for (i = 0; i < keys.length; i++) {
+      d = days[keys[i]];
+      var sub = [];
+      if (d.nr) sub.push(d.nr + ' rencontre' + (d.nr > 1 ? 's' : ''));
+      if (d.libres) sub.push(d.libres + ' match' + (d.libres > 1 ? 's' : '') + ' simple' + (d.libres > 1 ? 's' : ''));
+      h += '<a class="item" href="#j=' + encodeURIComponent(keys[i]) + '"><span class="go">›</span>' + frDay(keys[i]) +
+        '<span class="sub">' + sub.join(' · ') + '</span></a>';
+    }
+    $('view').innerHTML = keys.length ? h : '<div class="empty">Aucun résultat enregistré pour le moment.</div>';
+  }
+
+  // 2) Rencontres d'une journée
+  function viewJournee(day) {
+    var renc = {}, ids = [], libres = 0, i, m;
+    for (i = 0; i < all.length; i++) {
+      m = all[i];
+      if (dayOf(m) !== day) continue;
+      if (!m.rencontre_id) { libres++; continue; }
+      var r = renc[m.rencontre_id];
+      if (!r) { r = renc[m.rencontre_id] = { c1: m.club1, c2: m.club2, s1: 0, s2: 0, nb: 0 }; ids.push(m.rencontre_id); }
+      r.nb++; if (won1(m)) r.s1++; else r.s2++;
+    }
+    var h = '<h2>' + frDay(day) + '</h2>';
+    for (i = 0; i < ids.length; i++) {
+      var x = renc[ids[i]];
+      h += '<a class="item" href="#j=' + encodeURIComponent(day) + '&r=' + encodeURIComponent(ids[i]) + '"><span class="go">›</span>' +
+        '<span class="score"><span class="c1">' + esc(x.c1) + '</span><b>' + x.s1 + '</b>–<b>' + x.s2 + '</b><span class="c2">' + esc(x.c2) + '</span></span>' +
+        '<span class="sub">' + x.nb + ' partie' + (x.nb > 1 ? 's' : '') + ' jouée' + (x.nb > 1 ? 's' : '') + ' sur 14</span></a>';
+    }
+    if (libres) h += '<a class="item" href="#j=' + encodeURIComponent(day) + '&r=libre"><span class="go">›</span>Matchs simples' +
+      '<span class="sub">' + libres + ' match' + (libres > 1 ? 's' : '') + '</span></a>';
+    if (!ids.length && !libres) h += '<div class="empty">Aucun match ce jour-là.</div>';
+    $('view').innerHTML = h;
+  }
+
+  function matchCard(m, label) {
+    var g1 = parseInt(m.manches1, 10) || 0, g2 = parseInt(m.manches2, 10) || 0;
+    var sets = String(m.detail || '').split(' '), d1 = [], d2 = [];
+    for (var j = 0; j < sets.length; j++) { var p = sets[j].split('-'); if (p.length === 2) { d1.push(p[0]); d2.push(p[1]); } }
+    return '<div class="match"><div class="top"><span class="r">' + esc(m.format || '') + (m.duree_min ? ' · ' + esc(m.duree_min) + ' min' : '') +
+      '</span>' + (label ? '<span class="lbl">' + label + '</span>' : '') + hour(m.date) + '</div>' +
+      '<div class="row' + (g1 > g2 ? ' win' : '') + '"><span class="n">' + esc(m.joueur1) + '</span><span class="g">' + g1 + '</span><span class="d">' + esc(d1.join('  ')) + '</span></div>' +
+      '<div class="row' + (g2 > g1 ? ' win' : '') + '"><span class="n">' + esc(m.joueur2) + '</span><span class="g">' + g2 + '</span><span class="d">' + esc(d2.join('  ')) + '</span></div></div>';
+  }
+
+  function partieLabel(m) {
+    var p = String(m.partie || '');
+    return esc(m.ordre) + '. ' + (/^[A-D][W-Z]$/.test(p) ? p.charAt(0) + ' – ' + p.charAt(1) : esc(p));
+  }
+
+  // 3) Détail d'une rencontre
+  function viewRencontre(day, id) {
+    var list = [], i, m;
+    for (i = 0; i < all.length; i++) if (all[i].rencontre_id === id) list.push(all[i]);
+    if (!list.length) { $('view').innerHTML = '<div class="empty">Rencontre introuvable.</div>'; return; }
+    list.sort(function (a, b) { return (parseInt(a.ordre, 10) || 0) - (parseInt(b.ordre, 10) || 0); });
+    var s1 = 0, s2 = 0, bil = [{}, {}], ord = [[], []];
     for (i = 0; i < list.length; i++) {
       m = list[i];
-      var g1 = parseInt(m.manches1, 10) || 0, g2 = parseInt(m.manches2, 10) || 0;
-      var sets = (m.detail || '').split(' '), d1 = [], d2 = [];
-      for (var j = 0; j < sets.length; j++) { var p = sets[j].split('-'); if (p.length === 2) { d1.push(p[0]); d2.push(p[1]); } }
-      wins[m.vainqueur] = (wins[m.vainqueur] || 0) + 1;
-      html += '<div class="match"><div class="top"><span class="r">' + esc(m.format || '') + (m.duree_min ? ' · ' + esc(m.duree_min) + ' min' : '') +
-        '</span>' + frDate(m.date) + '</div>' +
-        '<div class="row' + (g1 > g2 ? ' win' : '') + '"><span class="n">' + esc(m.joueur1) + '</span><span class="g">' + g1 + '</span><span class="d">' + esc(d1.join('  ')) + '</span></div>' +
-        '<div class="row' + (g2 > g1 ? ' win' : '') + '"><span class="n">' + esc(m.joueur2) + '</span><span class="g">' + g2 + '</span><span class="d">' + esc(d2.join('  ')) + '</span></div></div>';
+      var w = won1(m);
+      if (w) s1++; else s2++;
+      if (!/^Double/.test(m.partie)) {
+        var names = [m.joueur1, m.joueur2];
+        for (var k = 0; k < 2; k++) {
+          var b = bil[k][names[k]];
+          if (!b) { b = bil[k][names[k]] = { v: 0, d: 0 }; ord[k].push(names[k]); }
+          if ((k === 0) === w) b.v++; else b.d++;
+        }
+      }
     }
-    $('list').innerHTML = html || '<div class="empty">Aucun match' + (f ? ' pour ce joueur' : ' enregistré pour le moment') + '.</div>';
+    var f = list[0];
+    var h = '<div class="teamHead"><div class="sc"><span class="c1">' + esc(f.club1) + '</span><b>' + s1 + '</b>–<b>' + s2 + '</b><span class="c2">' + esc(f.club2) + '</span></div>' +
+      '<div class="sub">' + frDay(day) + ' · ' + list.length + ' partie' + (list.length > 1 ? 's' : '') + ' jouée' + (list.length > 1 ? 's' : '') + ' sur 14</div></div>';
+    for (i = 0; i < list.length; i++) h += matchCard(list[i], partieLabel(list[i]));
 
-    // Victoires par joueur (sur la sélection)
-    var names = [], sh = '';
-    for (var k in wins) if (wins.hasOwnProperty(k)) names.push(k);
-    names.sort(function (a, b) { return wins[b] - wins[a]; });
-    for (i = 0; i < names.length && i < 8; i++) sh += '<div class="stat"><b>' + wins[names[i]] + '</b>victoire' + (wins[names[i]] > 1 ? 's' : '') + ' · ' + esc(names[i]) + '</div>';
-    $('stats').innerHTML = sh;
+    h += '<div class="bilan">';
+    var clubs = [f.club1, f.club2];
+    for (k = 0; k < 2; k++) {
+      h += '<div class="col"><h3 class="c' + (k + 1) + '">Bilan ' + esc(clubs[k]) + ' (simples)</h3>';
+      for (i = 0; i < ord[k].length; i++) {
+        var x = bil[k][ord[k][i]];
+        h += '<div class="p">' + esc(ord[k][i]) + '<span>' + x.v + ' V · ' + x.d + ' D</span></div>';
+      }
+      h += '</div>';
+    }
+    $('view').innerHTML = h + '</div>';
+  }
+
+  // Matchs simples d'une journée
+  function viewLibres(day) {
+    var h = '<h2>Matchs simples · ' + frDay(day) + '</h2>', nb = 0;
+    for (var i = all.length - 1; i >= 0; i--) {
+      if (all[i].rencontre_id || dayOf(all[i]) !== day) continue;
+      h += matchCard(all[i], ''); nb++;
+    }
+    $('view').innerHTML = nb ? h : '<div class="empty">Aucun match simple ce jour-là.</div>';
   }
 
   $('reload').addEventListener('click', load, false);
-  $('filter').addEventListener('input', render, false);
+  window.addEventListener('hashchange', route, false);
   load();
 })();
 </script>

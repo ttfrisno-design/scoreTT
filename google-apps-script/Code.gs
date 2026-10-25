@@ -13,7 +13,9 @@
 var CLE = 'changez-moi';
 
 var COLONNES = ['id', 'date', 'joueur1', 'joueur2', 'manches1', 'manches2',
-                'vainqueur', 'detail', 'format', 'duree_min'];
+                'vainqueur', 'detail', 'format', 'duree_min',
+                // Rencontre par équipes (vide pour un match simple)
+                'rencontre_id', 'journee', 'club1', 'club2', 'partie', 'ordre'];
 
 function feuille_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -22,6 +24,9 @@ function feuille_() {
     sh = ss.insertSheet('Matchs');
     sh.appendRow(COLONNES);
     sh.setFrozenRows(1);
+  } else if (sh.getLastColumn() < COLONNES.length) {
+    // Feuille créée par une version précédente : on complète l'en-tête
+    sh.getRange(1, 1, 1, COLONNES.length).setValues([COLONNES]);
   }
   return sh;
 }

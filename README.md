@@ -7,6 +7,17 @@
 
 Site : https://ttfrisno-design.github.io/scoreTT/
 
+## Rencontre par équipes (4 contre 4)
+
+Onglet « Rencontre par équipes » : saisir la journée, les deux clubs et les joueurs A B C D / W X Y Z.
+Les 14 parties s'affichent dans l'ordre : AW BX CY DZ AX BW DY CZ, Double 1, Double 2, AY CW DX BZ.
+Toucher une partie pour l'arbitrer (pour un double, on choisit les 2 joueurs de chaque club).
+Dans `resultats.html`, on choisit la journée, puis la rencontre, puis on consulte les parties
+et le bilan de chaque joueur.
+
+Après une mise à jour de `Code.gs` : Apps Script > Déployer > Gérer les déploiements > ✎ Modifier >
+Version : **Nouvelle version** > Déployer (l'adresse `/exec` ne change pas).
+
 ## Activer l'enregistrement des résultats
 
 1. Créer une feuille Google Sheets vide (par ex. « Résultats ping-pong »).

@@ -40,6 +40,48 @@ button { font-family: inherit; cursor: pointer; }
   background: #2f7cf6; border-radius: 10px; text-decoration: none; }
 #resumeBtn { display: block; width: 100%; margin-top: 12px; padding: 14px; font-size: 20px; border: 0; border-radius: 10px;
   background: #33405a; color: #fff; }
+#setup.wide .box { max-width: 760px; }
+
+/* Onglets Match simple / Rencontre */
+.tabs { overflow: hidden; margin: -6px 0 10px; }
+.tab { float: left; width: 50%; padding: 14px 0; font-size: 19px; border: 0; background: #0f141d; color: #9fb0c8; }
+.tab:first-child { border-radius: 10px 0 0 10px; } .tab:last-child { border-radius: 0 10px 10px 0; }
+.tab.on { background: #2f7cf6; color: #fff; font-weight: bold; }
+
+/* Rencontre par équipes */
+#setup input[type=date] { width: 100%; font-size: 22px; padding: 10px 12px; border-radius: 8px; border: 2px solid #33405a;
+  background: #0f141d; color: #fff; -webkit-appearance: none; min-height: 52px; }
+.teamCol { float: left; width: 48%; } .teamCol + .teamCol { margin-left: 4%; }
+.teamCols { overflow: hidden; }
+.teamCol input.pl { font-size: 20px !important; padding: 10px !important; margin-bottom: 8px; }
+.teamCol .lt { display: inline-block; width: 26px; color: #9fb0c8; font-weight: bold; }
+.plRow { overflow: hidden; } .plRow .lt { float: left; line-height: 46px; } .plRow input { float: left; width: 85% !important; }
+.c1 { color: #7fb0ff !important; } .c2 { color: #ff8f8c !important; }
+.bigBtn { display: block; width: 100%; margin-top: 22px; padding: 16px; font-size: 22px; font-weight: bold; border: 0; border-radius: 10px;
+  background: #1fb85b; color: #fff; }
+.smallBtns { overflow: hidden; margin-top: 16px; }
+.smallBtns button { float: left; width: 48%; padding: 12px 0; font-size: 17px; border: 0; border-radius: 8px; background: #33405a; color: #fff; }
+.smallBtns button + button { margin-left: 4%; background: #8a2b2b; }
+#teamHead { text-align: center; margin-bottom: 14px; }
+#teamHead .d { color: #9fb0c8; font-size: 16px; }
+#teamHead .sc { font-size: 26px; font-weight: bold; margin-top: 6px; }
+#teamHead .sc b { display: inline-block; min-width: 54px; padding: 4px 10px; margin: 0 10px; border-radius: 8px; background: #0f141d; }
+.prow { display: block; width: 100%; overflow: hidden; margin-bottom: 8px; padding: 12px 12px; text-align: left; border: 2px solid #33405a;
+  border-radius: 10px; background: #0f141d; color: #fff; font-size: 19px; }
+.prow .pn { float: left; width: 34px; color: #9fb0c8; }
+.prow .pl { float: left; width: 64px; font-weight: bold; }
+.prow .pm { float: left; width: 55%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.prow .ps { float: right; color: #9fb0c8; font-size: 17px; }
+.prow.done { border-color: #1f5f3a; } .prow.done .ps { color: #6fdc9a; font-weight: bold; }
+.prow.cur { border-color: #f5c400; } .prow.cur .ps { color: #f5c400; }
+.prow.dbl .pl { width: 98px; }
+.prow b.w { color: #6fdc9a; }
+
+/* Fenêtre de lancement d'une partie */
+.overlay label { display: block; text-align: left; font-size: 17px; color: #9fb0c8; margin: 14px 0 6px; }
+.overlay .choice { margin-top: 0; padding: 12px 0; font-size: 18px; }
+.choices.four .choice { width: 23.5%; margin-right: 2%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.choices.four .choice:last-child { margin-right: 0; }
 
 /* ---------- Tableau de score ---------- */
 #board { position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
@@ -103,6 +145,54 @@ button { font-family: inherit; cursor: pointer; }
 <div id="setup">
   <div class="box">
     <h1>&#127955; Tennis de table</h1>
+    <div class="tabs">
+      <button class="tab" id="tabSimple">Match simple</button>
+      <button class="tab" id="tabTeam">Rencontre par équipes</button>
+    </div>
+
+    <!-- Rencontre par équipes -->
+    <div id="teamSec" class="hidden">
+      <div id="teamForm">
+        <label for="tDate">Journée (date de la rencontre)</label>
+        <input type="date" id="tDate">
+        <div class="teamCols">
+          <div class="teamCol">
+            <label for="tClub1" class="c1">Club recevant</label>
+            <input type="text" id="tClub1" class="pl" maxlength="30" placeholder="Nom du club" autocomplete="off" autocorrect="off">
+            <div class="plRow"><span class="lt">A</span><input type="text" class="pl" id="tA0" maxlength="20" autocomplete="off" autocorrect="off"></div>
+            <div class="plRow"><span class="lt">B</span><input type="text" class="pl" id="tA1" maxlength="20" autocomplete="off" autocorrect="off"></div>
+            <div class="plRow"><span class="lt">C</span><input type="text" class="pl" id="tA2" maxlength="20" autocomplete="off" autocorrect="off"></div>
+            <div class="plRow"><span class="lt">D</span><input type="text" class="pl" id="tA3" maxlength="20" autocomplete="off" autocorrect="off"></div>
+          </div>
+          <div class="teamCol">
+            <label for="tClub2" class="c2">Club visiteur</label>
+            <input type="text" id="tClub2" class="pl" maxlength="30" placeholder="Nom du club" autocomplete="off" autocorrect="off">
+            <div class="plRow"><span class="lt">W</span><input type="text" class="pl" id="tB0" maxlength="20" autocomplete="off" autocorrect="off"></div>
+            <div class="plRow"><span class="lt">X</span><input type="text" class="pl" id="tB1" maxlength="20" autocomplete="off" autocorrect="off"></div>
+            <div class="plRow"><span class="lt">Y</span><input type="text" class="pl" id="tB2" maxlength="20" autocomplete="off" autocorrect="off"></div>
+            <div class="plRow"><span class="lt">Z</span><input type="text" class="pl" id="tB3" maxlength="20" autocomplete="off" autocorrect="off"></div>
+          </div>
+        </div>
+        <label>Parties en</label>
+        <div class="choices" id="bestOfT">
+          <button class="choice" data-v="3">3 manches</button>
+          <button class="choice on" data-v="5">5 manches</button>
+          <button class="choice" data-v="7">7 manches</button>
+        </div>
+        <button class="bigBtn" id="tCreate">Créer la rencontre</button>
+      </div>
+      <div id="teamView" class="hidden">
+        <div id="teamHead"></div>
+        <div id="partieList"></div>
+        <div class="smallBtns">
+          <button id="tEdit">&#9998; Modifier les noms</button>
+          <button id="tEnd">Terminer la rencontre</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Match simple -->
+    <div id="simpleSec">
     <label for="n0">Joueur 1 (bleu)</label>
     <input type="text" id="n0" value="Joueur 1" maxlength="20" autocomplete="off" autocorrect="off">
     <label for="n1">Joueur 2 (rouge)</label>
@@ -120,6 +210,7 @@ button { font-family: inherit; cursor: pointer; }
     </div>
     <button id="startBtn">Commencer le match</button>
     <button id="resumeBtn" class="hidden">Reprendre le match en cours</button>
+    </div>
     <div id="online">
       <label for="cle">Code d'enregistrement en ligne</label>
       <input type="text" id="cle" maxlength="40" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
@@ -168,8 +259,30 @@ button { font-family: inherit; cursor: pointer; }
   <button class="go" id="tmoEnd">Reprendre le jeu</button>
 </div></div>
 
+<div id="partieOv" class="overlay hidden"><div class="card">
+  <h2 id="pvTitle"></h2><p id="pvText" style="white-space: pre-line"></p>
+  <div id="pvDouble">
+    <label id="pvL1" class="c1"></label>
+    <div class="choices four" id="dbl1"><button class="choice" data-i="0"></button><button class="choice" data-i="1"></button><button class="choice" data-i="2"></button><button class="choice" data-i="3"></button></div>
+    <label id="pvL2" class="c2"></label>
+    <div class="choices four" id="dbl2"><button class="choice" data-i="0"></button><button class="choice" data-i="1"></button><button class="choice" data-i="2"></button><button class="choice" data-i="3"></button></div>
+  </div>
+  <div id="pvServe">
+    <label>Premier serveur</label>
+    <div class="choices two" id="pvFs"><button class="choice on" data-v="0"></button><button class="choice" data-v="1"></button></div>
+  </div>
+  <button class="go" id="pvGo">Commencer la partie</button>
+  <button id="pvCancel">Annuler</button>
+</div></div>
+
+<div id="confirmEnd" class="overlay hidden"><div class="card">
+  <h2>Terminer la rencontre ?</h2><p>La liste des parties sera effacée de l'iPad. Les résultats déjà enregistrés en ligne restent consultables.</p>
+  <button class="go" id="ceYes">Oui, terminer</button>
+  <button id="ceNo">Non</button>
+</div></div>
+
 <div id="confirmNew" class="overlay hidden"><div class="card">
-  <h2>Nouveau match ?</h2><p>Le match en cours sera effacé.</p>
+  <h2 id="cnTitle">Nouveau match ?</h2><p id="cnText">Le match en cours sera effacé.</p>
   <button class="go" id="cnYes">Oui, nouveau match</button>
   <button id="cnNo">Non, continuer</button>
 </div></div>
@@ -299,7 +412,8 @@ button { font-family: inherit; cursor: pointer; }
     fillPanel($('panelL'), left);
     fillPanel($('panelR'), 1 - left);
 
-    var a = S.points[0], b = S.points[1], info = 'Manche ' + (S.gameIndex + 1) + ' · en ' + S.bestOf;
+    var a = S.points[0], b = S.points[1];
+    var info = (S.renc ? 'Partie ' + (S.renc.idx + 1) + ' (' + S.renc.label + ') · ' : '') + 'Manche ' + (S.gameIndex + 1) + ' · en ' + S.bestOf;
     if (S.pending === null && !S.finished) {
       if ((a >= 10 || b >= 10) && Math.abs(a - b) === 1) info += ' · Balle de manche';
       if (a >= 10 && b >= 10 && a === b) info += ' · Égalité';
@@ -319,7 +433,7 @@ button { font-family: inherit; cursor: pointer; }
       if (S.finished) {
         $('goTitle').textContent = '🏆 ' + name + ' gagne le match !';
         $('goText').textContent = 'Manches ' + S.games[S.pending] + ' – ' + S.games[1 - S.pending] + '  (dernière : ' + last[0] + '-' + last[1] + ')';
-        $('nextBtn').textContent = 'Enregistrer et nouveau match';
+        $('nextBtn').textContent = S.renc ? 'Enregistrer et retour à la rencontre' : 'Enregistrer et nouveau match';
       } else {
         $('goTitle').textContent = 'Manche pour ' + name;
         $('goText').textContent = last[0] + ' – ' + last[1] + '   ·   Manches : ' + S.games[0] + ' – ' + S.games[1];
@@ -357,10 +471,19 @@ button { font-family: inherit; cursor: pointer; }
     if (!S || !S.finished || S.saved) return;
     var w = S.games[0] > S.games[1] ? 0 : 1, det = [];
     for (var i = 0; i < S.history.length; i++) det.push(S.history[i][0] + '-' + S.history[i][1]);
-    var q = getQueue();
-    q.push({ id: S.id, date: fmtDate(S.startedAt), joueur1: S.names[0], joueur2: S.names[1],
+    var rec = { id: S.id, date: fmtDate(S.startedAt), joueur1: S.names[0], joueur2: S.names[1],
              manches1: S.games[0], manches2: S.games[1], vainqueur: S.names[w], detail: det.join(' '),
-             format: 'en ' + S.bestOf, duree_min: Math.round((Date.now() - S.startedAt) / 60000) });
+             format: 'en ' + S.bestOf, duree_min: Math.round((Date.now() - S.startedAt) / 60000),
+             journee: fmtDate(S.startedAt).slice(0, 10) };
+    var R = loadRenc();
+    if (S.renc && R && R.id === S.renc.id) {
+      rec.rencontre_id = R.id; rec.journee = R.journee; rec.club1 = R.clubs[0]; rec.club2 = R.clubs[1];
+      rec.partie = S.renc.label; rec.ordre = S.renc.idx + 1;
+      R.res[S.renc.idx] = { g: [S.games[0], S.games[1]], detail: det.join(' '), n: [S.names[0], S.names[1]] };
+      saveRenc(R);
+    }
+    var q = getQueue();
+    q.push(rec);
     setQueue(q);
     S.saved = true; save();
     flushQueue();
@@ -447,25 +570,181 @@ button { font-family: inherit; cursor: pointer; }
   }
   function choiceVal(id) { return parseInt(q($(id), '.choice.on').getAttribute('data-v'), 10); }
 
+  function setChoice(id, v) {
+    var btns = $(id).querySelectorAll('.choice');
+    for (var i = 0; i < btns.length; i++) btns[i].classList[btns[i].getAttribute('data-v') === String(v) ? 'add' : 'remove']('on');
+  }
+
   function openSetup() {
     endTimeout();
     hide($('board')); hide($('gameOver')); hide($('confirmNew'));
-    if (S && !S.finished) show($('resumeBtn')); else hide($('resumeBtn'));
+    if (S && !S.finished && !S.renc) show($('resumeBtn')); else hide($('resumeBtn'));
     show($('setup'));
+    setMode(getMode());
     flushQueue();
   }
   function openBoard() { hide($('setup')); show($('board')); render(); }
 
-  function startMatch() {
-    var n0 = $('n0').value.replace(/^\s+|\s+$/g, '') || 'Joueur 1';
-    var n1 = $('n1').value.replace(/^\s+|\s+$/g, '') || 'Joueur 2';
+  function trim(s) { return String(s).replace(/^\s+|\s+$/g, ''); }
+  function newId(p) { return p + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36); }
+
+  function newMatch(n0, n1, bestOf, firstServer) {
     if (document.activeElement) document.activeElement.blur();
-    S = { id: Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36), startedAt: Date.now(), saved: false,
-          names: [n0, n1], bestOf: choiceVal('bestOf'), firstServer: choiceVal('firstServ'),
+    S = { id: newId(''), startedAt: Date.now(), saved: false,
+          names: [n0, n1], bestOf: bestOf, firstServer: firstServer,
           points: [0, 0], games: [0, 0], gameIndex: 0, history: [], pending: null, finished: false,
           swapped: false, decSwapped: false, timeouts: [false, false] };
     undoStack = [];
+  }
+
+  function startMatch() {
+    newMatch(trim($('n0').value) || 'Joueur 1', trim($('n1').value) || 'Joueur 2', choiceVal('bestOf'), choiceVal('firstServ'));
     save(); openBoard();
+  }
+
+  // ---------- Rencontre par équipes (4 contre 4) ----------
+  var RKEY = 'ttScore.renc', MKEY = 'ttScore.mode', teamEditing = false, pvIdx = -1;
+  var L1 = ['A', 'B', 'C', 'D'], L2 = ['W', 'X', 'Y', 'Z'];
+  // Ordre officiel des parties : [joueur club 1, joueur club 2] ou double
+  var ORDRE = [[0, 0], [1, 1], [2, 2], [3, 3], [0, 1], [1, 0], [3, 2], [2, 3], 'Double 1', 'Double 2', [0, 2], [2, 0], [3, 1], [1, 3]];
+
+  function loadRenc() { try { return JSON.parse(localStorage.getItem(RKEY)); } catch (e) { return null; } }
+  function saveRenc(R) { try { localStorage.setItem(RKEY, JSON.stringify(R)); } catch (e) {} }
+  function getMode() { try { return localStorage.getItem(MKEY) || 'simple'; } catch (e) { return 'simple'; } }
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function isDouble(i) { return typeof ORDRE[i] === 'string'; }
+  function plabel(i) { return isDouble(i) ? ORDRE[i] : L1[ORDRE[i][0]] + L2[ORDRE[i][1]]; }
+  function frDay(d) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || ''); return m ? m[3] + '/' + m[2] + '/' + m[1] : d; }
+
+  function partieNames(R, i) {
+    if (!isDouble(i)) return [R.p1[ORDRE[i][0]], R.p2[ORDRE[i][1]]];
+    var d = R.dbl[i === 8 ? 0 : 1];
+    if (!d) return null;
+    return [R.p1[d.a[0]] + ' / ' + R.p1[d.a[1]], R.p2[d.b[0]] + ' / ' + R.p2[d.b[1]]];
+  }
+
+  function teamScore(R) {
+    var s = [0, 0];
+    for (var i = 0; i < R.res.length; i++) if (R.res[i]) s[R.res[i].g[0] > R.res[i].g[1] ? 0 : 1]++;
+    return s;
+  }
+
+  function setMode(m) {
+    try { localStorage.setItem(MKEY, m); } catch (e) {}
+    $('tabSimple').className = 'tab' + (m === 'simple' ? ' on' : '');
+    $('tabTeam').className = 'tab' + (m === 'team' ? ' on' : '');
+    $('simpleSec').className = m === 'simple' ? '' : 'hidden';
+    $('teamSec').className = m === 'team' ? '' : 'hidden';
+    $('setup').className = m === 'team' ? 'wide' : '';
+    if (m === 'team') renderTeam();
+  }
+
+  function fillTeamForm(R) {
+    $('tDate').value = R ? R.journee : fmtDate(Date.now()).slice(0, 10);
+    $('tClub1').value = R ? R.clubs[0] : '';
+    $('tClub2').value = R ? R.clubs[1] : '';
+    for (var i = 0; i < 4; i++) { $('tA' + i).value = R ? R.p1[i] : ''; $('tB' + i).value = R ? R.p2[i] : ''; }
+    setChoice('bestOfT', R ? R.bestOf : 5);
+    $('tCreate').textContent = R ? 'Valider les noms' : 'Créer la rencontre';
+  }
+
+  function renderTeam() {
+    var R = loadRenc();
+    if (!R || teamEditing) { show($('teamForm')); hide($('teamView')); return; }
+    hide($('teamForm')); show($('teamView'));
+    var sc = teamScore(R);
+    $('teamHead').innerHTML = '<div class="d">Journée du ' + esc(frDay(R.journee)) + ' · parties en ' + R.bestOf + ' manches</div>' +
+      '<div class="sc"><span class="c1">' + esc(R.clubs[0]) + '</span><b>' + sc[0] + '</b>–<b>' + sc[1] + '</b><span class="c2">' + esc(R.clubs[1]) + '</span></div>';
+    var list = $('partieList');
+    list.innerHTML = '';
+    for (var i = 0; i < ORDRE.length; i++) {
+      var res = R.res[i], names = partieNames(R, i);
+      var cur = S && !S.finished && S.renc && S.renc.id === R.id && S.renc.idx === i;
+      var b = document.createElement('button');
+      b.className = 'prow' + (isDouble(i) ? ' dbl' : '') + (res ? ' done' : '') + (cur ? ' cur' : '');
+      var nm;
+      if (res) {
+        var w = res.g[0] > res.g[1] ? 0 : 1;
+        nm = (w === 0 ? '<b class="w">' + esc(res.n[0]) + '</b>' : esc(res.n[0])) + ' – ' + (w === 1 ? '<b class="w">' + esc(res.n[1]) + '</b>' : esc(res.n[1]));
+      } else nm = names ? esc(names[0]) + ' – ' + esc(names[1]) : '<span style="color:#9fb0c8">joueurs à choisir</span>';
+      b.innerHTML = '<span class="pn">' + (i + 1) + '.</span><span class="pl">' + plabel(i).replace(/^([A-D])([W-Z])$/, '$1 – $2') + '</span>' +
+        '<span class="pm">' + nm + '</span><span class="ps">' + (res ? res.g[0] + ' – ' + res.g[1] : cur ? 'en cours ▶' : 'à jouer') + '</span>';
+      // click (et non tap) pour laisser défiler la liste au doigt
+      (function (idx) { b.addEventListener('click', function () { openPartie(idx); }, false); })(i);
+      list.appendChild(b);
+    }
+  }
+
+  function saveTeamForm() {
+    if (document.activeElement) document.activeElement.blur();
+    var R = loadRenc() || { id: newId('r'), res: [], dbl: [null, null] };
+    R.journee = $('tDate').value || fmtDate(Date.now()).slice(0, 10);
+    R.clubs = [trim($('tClub1').value) || 'Club 1', trim($('tClub2').value) || 'Club 2'];
+    R.p1 = []; R.p2 = [];
+    for (var i = 0; i < 4; i++) { R.p1.push(trim($('tA' + i).value) || L1[i]); R.p2.push(trim($('tB' + i).value) || L2[i]); }
+    R.bestOf = choiceVal('bestOfT');
+    for (i = 0; i < ORDRE.length; i++) if (R.res[i] === undefined) R.res[i] = null;
+    saveRenc(R);
+    teamEditing = false;
+    renderTeam();
+  }
+
+  function selected(id) {
+    var out = [], btns = $(id).querySelectorAll('.choice');
+    for (var i = 0; i < btns.length; i++) if (btns[i].classList.contains('on')) out.push(i);
+    return out;
+  }
+
+  function openPartie(i) {
+    var R = loadRenc();
+    if (S && !S.finished) {
+      if (S.renc && S.renc.id === R.id && S.renc.idx === i) { openBoard(); return; }
+      toast(S.renc ? 'Partie ' + (S.renc.idx + 1) + ' en cours : terminez-la ou abandonnez-la' : 'Un match simple est en cours');
+      return;
+    }
+    pvIdx = i;
+    var names = partieNames(R, i), res = R.res[i];
+    $('pvTitle').textContent = 'Partie ' + (i + 1) + ' · ' + plabel(i);
+    var t = '';
+    if (isDouble(i)) {
+      show($('pvDouble'));
+      $('pvL1').textContent = R.clubs[0] + ' : choisir 2 joueurs';
+      $('pvL2').textContent = R.clubs[1] + ' : choisir 2 joueurs';
+      var d = R.dbl[i === 8 ? 0 : 1];
+      for (var k = 0; k < 4; k++) {
+        var b1 = $('dbl1').children[k], b2 = $('dbl2').children[k];
+        b1.textContent = L1[k] + ' ' + R.p1[k]; b2.textContent = L2[k] + ' ' + R.p2[k];
+        b1.className = 'choice' + (d && d.a.indexOf(k) >= 0 ? ' on' : '');
+        b2.className = 'choice' + (d && d.b.indexOf(k) >= 0 ? ' on' : '');
+      }
+      $('pvFs').children[0].textContent = R.clubs[0]; $('pvFs').children[1].textContent = R.clubs[1];
+    } else {
+      hide($('pvDouble'));
+      t = names[0] + '  –  ' + names[1];
+      $('pvFs').children[0].textContent = names[0]; $('pvFs').children[1].textContent = names[1];
+    }
+    if (res) t += (t ? '\n' : '') + 'Déjà jouée (' + res.g[0] + ' – ' + res.g[1] + '). La rejouer remplacera ce résultat.';
+    $('pvText').textContent = t;
+    $('pvGo').textContent = res ? 'Rejouer la partie' : 'Commencer la partie';
+    setChoice('pvFs', 0);
+    show($('partieOv'));
+  }
+
+  function startPartie() {
+    var R = loadRenc(), i = pvIdx, names;
+    if (!R || i < 0) return;
+    if (isDouble(i)) {
+      var a = selected('dbl1'), b = selected('dbl2');
+      if (a.length !== 2 || b.length !== 2) { toast('Choisissez 2 joueurs par club'); return; }
+      R.dbl[i === 8 ? 0 : 1] = { a: a, b: b };
+      saveRenc(R);
+    }
+    names = partieNames(R, i);
+    newMatch(names[0], names[1], R.bestOf, choiceVal('pvFs'));
+    S.renc = { id: R.id, idx: i, label: plabel(i) };
+    save();
+    hide($('partieOv'));
+    openBoard();
   }
 
   function updateServerLabels() {
@@ -495,7 +774,42 @@ button { font-family: inherit; cursor: pointer; }
   tap($('goUndo'), undo);
   tap($('swapBtn'), function () { S.swapped = !S.swapped; save(); render(); });
   tap($('nextBtn'), function () { if (S.finished) { queueFinished(); openSetup(); } else { nextGame(); } });
-  tap($('newBtn'), function () { if (S.finished) { queueFinished(); openSetup(); } else show($('confirmNew')); });
+  tap($('newBtn'), function () {
+    if (S.finished) { queueFinished(); openSetup(); return; }
+    $('cnTitle').textContent = S.renc ? 'Abandonner la partie ?' : 'Nouveau match ?';
+    $('cnText').textContent = S.renc ? 'Le score de cette partie sera effacé (rien n\'est enregistré).' : 'Le match en cours sera effacé.';
+    $('cnYes').textContent = S.renc ? 'Oui, retour à la rencontre' : 'Oui, nouveau match';
+    show($('confirmNew'));
+  });
+
+  // Rencontre par équipes
+  tap($('tabSimple'), function () { setMode('simple'); });
+  tap($('tabTeam'), function () { setMode('team'); });
+  choiceGroup('bestOfT'); choiceGroup('pvFs');
+  ['dbl1', 'dbl2'].forEach(function (id) {
+    var btns = $(id).querySelectorAll('.choice');
+    for (var i = 0; i < btns.length; i++) {
+      (function (b) {
+        tap(b, function () {
+          if (!b.classList.contains('on') && selected(id).length >= 2) { toast('2 joueurs maximum'); return; }
+          b.classList.toggle('on');
+        });
+      })(btns[i]);
+    }
+  });
+  tap($('tCreate'), saveTeamForm);
+  tap($('tEdit'), function () { teamEditing = true; fillTeamForm(loadRenc()); renderTeam(); });
+  tap($('tEnd'), function () { show($('confirmEnd')); });
+  tap($('ceNo'), function () { hide($('confirmEnd')); });
+  tap($('ceYes'), function () {
+    hide($('confirmEnd'));
+    try { localStorage.removeItem(RKEY); } catch (e) {}
+    if (S && S.renc && !S.finished) { S = null; undoStack = []; try { localStorage.removeItem(KEY); } catch (e) {} }
+    teamEditing = false; fillTeamForm(null); renderTeam();
+  });
+  tap($('pvGo'), startPartie);
+  tap($('pvCancel'), function () { hide($('partieOv')); });
+  fillTeamForm(loadRenc());
   $('cle').addEventListener('change', function () {
     try { localStorage.setItem(CKEY, $('cle').value.replace(/^\s+|\s+$/g, '')); } catch (e) {}
     flushQueue();
@@ -504,7 +818,7 @@ button { font-family: inherit; cursor: pointer; }
   window.addEventListener('online', flushQueue, false);
   tap($('cnYes'), function () {
     hide($('confirmNew'));
-    if (S) { $('n0').value = S.names[0]; $('n1').value = S.names[1]; updateServerLabels(); }
+    if (S && !S.renc) { $('n0').value = S.names[0]; $('n1').value = S.names[1]; updateServerLabels(); }
     S = null; undoStack = []; try { localStorage.removeItem(KEY); } catch (e) {}
     openSetup();
   });
@@ -519,7 +833,7 @@ button { font-family: inherit; cursor: pointer; }
   window.addEventListener('orientationchange', function () { setTimeout(function () { if (S) sizeFonts(); }, 300); }, false);
 
   if (load()) {
-    $('n0').value = S.names[0]; $('n1').value = S.names[1]; updateServerLabels();
+    if (!S.renc) { $('n0').value = S.names[0]; $('n1').value = S.names[1]; updateServerLabels(); }
     if (!S.id) { S.id = 'm' + Date.now().toString(36); S.startedAt = Date.now(); }
     if (S.finished) { queueFinished(); openSetup(); } else openBoard();
   } else {

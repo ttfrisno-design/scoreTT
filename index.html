@@ -105,6 +105,7 @@ button { font-family: inherit; cursor: pointer; }
 .panel.pressed { opacity: 0.85; }
 .pname { position: absolute; top: 14px; left: 70px; right: 70px; font-size: 30px; font-weight: bold; white-space: nowrap;
   overflow: hidden; text-overflow: ellipsis; }
+.pname .club { font-size: 0.7em; font-weight: normal; opacity: 0.85; }
 .serve { position: absolute; top: 18px; width: 28px; height: 28px; border-radius: 14px; background: #fff;
   box-shadow: 0 0 0 4px rgba(255,255,255,0.35); }
 .panel.left .serve { left: 22px; }
@@ -452,10 +453,25 @@ html, body { overscroll-behavior: none; }
     }
   }
 
+  function clubOf(p) {
+    if (S.renc.clubs) return S.renc.clubs[p];
+    var R = loadRenc(); // partie commencée avec une version précédente
+    return R && R.id === S.renc.id ? R.clubs[p] : '';
+  }
+
   function fillPanel(el, p) {
     el.className = 'panel ' + (el.id === 'panelL' ? 'left' : 'right') + ' p' + p;
     el.setAttribute('data-p', p);
-    q(el, '.pname').textContent = S.names[p];
+    // Rencontre par équipes : nom du club devant le joueur
+    var pn = q(el, '.pname'), club = S.renc ? clubOf(p) : '';
+    pn.innerHTML = '';
+    if (club) {
+      var cs = document.createElement('span');
+      cs.className = 'club'; cs.textContent = club;
+      pn.appendChild(cs);
+      pn.appendChild(document.createTextNode(' '));
+    }
+    pn.appendChild(document.createTextNode(S.names[p]));
     q(el, '.points').textContent = S.points[p];
     q(el, '.games').textContent = S.games[p];
     var srv = S.pending === null && !S.finished && server() === p;
@@ -884,7 +900,7 @@ html, body { overscroll-behavior: none; }
     }
     names = partieNames(R, i);
     newMatch(names[0], names[1], R.bestOf, choiceVal('pvFs'));
-    S.renc = { id: R.id, idx: i, label: plabel(i), arb: arbitre(R, i) };
+    S.renc = { id: R.id, idx: i, label: plabel(i), arb: arbitre(R, i), clubs: [R.clubs[0], R.clubs[1]] };
     save();
     hide($('partieOv'));
     openBoard();

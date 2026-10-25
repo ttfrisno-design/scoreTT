@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Score Ping-Pong</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Score TT">
+<meta name="format-detection" content="telephone=no">
+<style>
+/* Compatible Safari 9 (iPad 2 / iOS 9.3.5) : pas de grid, pas de variables CSS, flex préfixé */
+* { -webkit-box-sizing: border-box; box-sizing: border-box; -webkit-tap-highlight-color: rgba(0,0,0,0); }
+html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #10141c; color: #fff;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none; -webkit-text-size-adjust: 100%; }
+button { font-family: inherit; cursor: pointer; }
+.hidden { display: none !important; }
+
+/* ---------- Écran de configuration ---------- */
+#setup { position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 30px 20px; }
+#setup .box { max-width: 560px; margin: 0 auto; background: #1b2230; border-radius: 14px; padding: 26px; }
+#setup h1 { margin: 0 0 22px; font-size: 30px; text-align: center; }
+#setup label { display: block; font-size: 17px; color: #9fb0c8; margin: 16px 0 6px; }
+#setup input[type=text] { width: 100%; font-size: 24px; padding: 12px; border-radius: 8px; border: 2px solid #33405a;
+  background: #0f141d; color: #fff; -webkit-user-select: text; user-select: text; -webkit-appearance: none; }
+.choices { overflow: hidden; }
+.choice { float: left; width: 31%; margin-right: 3.5%; padding: 14px 0; font-size: 20px; text-align: center; border-radius: 8px;
+  background: #0f141d; border: 2px solid #33405a; color: #fff; }
+.choice:last-child { margin-right: 0; }
+.choices.two .choice { width: 48%; margin-right: 4%; }
+.choices.two .choice:last-child { margin-right: 0; }
+.choice.on { background: #2f7cf6; border-color: #2f7cf6; }
+#startBtn { display: block; width: 100%; margin-top: 28px; padding: 18px; font-size: 26px; font-weight: bold;
+  border: 0; border-radius: 10px; background: #1fb85b; color: #fff; }
+#resumeBtn { display: block; width: 100%; margin-top: 12px; padding: 14px; font-size: 20px; border: 0; border-radius: 10px;
+  background: #33405a; color: #fff; }
+
+/* ---------- Tableau de score ---------- */
+#board { position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
+#topbar { position: absolute; top: 0; left: 0; right: 0; height: 64px; background: #0a0d13; padding: 8px 8px; white-space: nowrap; overflow: hidden; }
+#topbar button { height: 48px; padding: 0 14px; margin-right: 6px; font-size: 17px; border: 0; border-radius: 8px; background: #2a3448; color: #fff; }
+#topbar button.red { background: #8a2b2b; }
+#matchInfo { float: right; line-height: 48px; font-size: 16px; color: #9fb0c8; padding-right: 6px; }
+
+#panels { position: absolute; top: 64px; left: 0; right: 0; bottom: 56px; }
+.panel { position: absolute; top: 0; bottom: 0; width: 50%; overflow: hidden; text-align: center; }
+.panel.left { left: 0; }
+.panel.right { left: 50%; border-left: 3px solid #0a0d13; }
+.panel.p0 { background: #1d4fa8; }
+.panel.p1 { background: #b0322f; }
+.panel.pressed { opacity: 0.85; }
+.pname { position: absolute; top: 14px; left: 70px; right: 70px; font-size: 30px; font-weight: bold; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; }
+.serve { position: absolute; top: 18px; width: 28px; height: 28px; border-radius: 14px; background: #fff;
+  box-shadow: 0 0 0 4px rgba(255,255,255,0.35); }
+.panel.left .serve { left: 22px; }
+.panel.right .serve { right: 22px; }
+.serveText { position: absolute; top: 56px; left: 0; right: 0; font-size: 17px; color: rgba(255,255,255,0.85); }
+.points { position: absolute; left: 0; right: 0; font-weight: bold; line-height: 1; letter-spacing: -0.03em; }
+.games { position: absolute; bottom: 14px; width: 74px; height: 74px; line-height: 74px; font-size: 46px; font-weight: bold;
+  border-radius: 10px; background: rgba(0,0,0,0.35); }
+.panel.left .games { right: 14px; }
+.panel.right .games { left: 14px; }
+.gamesLbl { position: absolute; bottom: 92px; width: 74px; font-size: 13px; color: rgba(255,255,255,0.8); }
+.panel.left .gamesLbl { right: 14px; }
+.panel.right .gamesLbl { left: 14px; }
+.minus { position: absolute; bottom: 14px; width: 74px; height: 74px; font-size: 44px; line-height: 70px; border: 0; border-radius: 37px;
+  background: rgba(0,0,0,0.3); color: #fff; }
+.panel.left .minus { left: 14px; }
+.panel.right .minus { right: 14px; }
+.tmo { position: absolute; bottom: 30px; left: 50%; width: 140px; margin-left: -70px; height: 44px; font-size: 16px; border: 0;
+  border-radius: 8px; background: rgba(0,0,0,0.3); color: #fff; }
+.tmo.used { opacity: 0.35; }
+
+#history { position: absolute; left: 0; right: 0; bottom: 0; height: 56px; background: #0a0d13; text-align: center;
+  line-height: 56px; font-size: 22px; white-space: nowrap; overflow: hidden; color: #cfd8e6; }
+#history span { display: inline-block; margin: 0 10px; padding: 0 12px; line-height: 38px; border-radius: 6px; background: #1b2230; }
+#history b.w0 { color: #7fb0ff; } #history b.w1 { color: #ff8f8c; }
+
+/* ---------- Superpositions ---------- */
+.overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(5,8,12,0.82); z-index: 10; text-align: center; }
+.overlay .card { position: absolute; top: 50%; left: 50%; width: 520px; margin-left: -260px; -webkit-transform: translateY(-50%); transform: translateY(-50%);
+  background: #1b2230; border-radius: 16px; padding: 28px; }
+.overlay h2 { margin: 0 0 10px; font-size: 34px; }
+.overlay p { margin: 0 0 22px; font-size: 22px; color: #cfd8e6; }
+.overlay button { display: block; width: 100%; padding: 16px; margin-top: 10px; font-size: 22px; border: 0; border-radius: 10px; background: #2a3448; color: #fff; }
+.overlay button.go { background: #1fb85b; font-weight: bold; }
+#tmoCount { font-size: 120px; font-weight: bold; margin: 10px 0 20px; }
+#toast { position: absolute; top: 90px; left: 50%; width: 420px; margin-left: -210px; padding: 16px; z-index: 20; border-radius: 12px;
+  background: #f5c400; color: #000; font-size: 26px; font-weight: bold; text-align: center; }
+@media (max-width: 600px) { .overlay .card { width: 92%; margin-left: -46%; } #toast { width: 92%; margin-left: -46%; } }
+</style>
+</head>
+<body>
+
+<!-- Configuration -->
+<div id="setup">
+  <div class="box">
+    <h1>&#127955; Tennis de table</h1>
+    <label for="n0">Joueur 1 (bleu)</label>
+    <input type="text" id="n0" value="Joueur 1" maxlength="20" autocomplete="off" autocorrect="off">
+    <label for="n1">Joueur 2 (rouge)</label>
+    <input type="text" id="n1" value="Joueur 2" maxlength="20" autocomplete="off" autocorrect="off">
+    <label>Match en</label>
+    <div class="choices" id="bestOf">
+      <button class="choice" data-v="3">3 manches</button>
+      <button class="choice on" data-v="5">5 manches</button>
+      <button class="choice" data-v="7">7 manches</button>
+    </div>
+    <label>Premier serveur</label>
+    <div class="choices two" id="firstServ">
+      <button class="choice on" data-v="0" id="fs0">Joueur 1</button>
+      <button class="choice" data-v="1" id="fs1">Joueur 2</button>
+    </div>
+    <button id="startBtn">Commencer le match</button>
+    <button id="resumeBtn" class="hidden">Reprendre le match en cours</button>
+  </div>
+</div>
+
+<!-- Tableau -->
+<div id="board" class="hidden">
+  <div id="topbar">
+    <button id="undoBtn">&#8630; Annuler</button>
+    <button id="swapBtn">&#8644; Côtés</button>
+    <button id="newBtn" class="red">Nouveau match</button>
+    <span id="matchInfo"></span>
+  </div>
+  <div id="panels">
+    <div class="panel left" id="panelL">
+      <div class="serve"></div><div class="pname"></div><div class="serveText"></div>
+      <div class="points">0</div>
+      <div class="gamesLbl">Manches</div><div class="games">0</div>
+      <button class="minus">&minus;</button>
+      <button class="tmo">Temps mort</button>
+    </div>
+    <div class="panel right" id="panelR">
+      <div class="serve"></div><div class="pname"></div><div class="serveText"></div>
+      <div class="points">0</div>
+      <div class="gamesLbl">Manches</div><div class="games">0</div>
+      <button class="minus">&minus;</button>
+      <button class="tmo">Temps mort</button>
+    </div>
+  </div>
+  <div id="history"></div>
+</div>
+
+<div id="gameOver" class="overlay hidden"><div class="card">
+  <h2 id="goTitle"></h2><p id="goText"></p>
+  <button class="go" id="nextBtn">Manche suivante</button>
+  <button id="goUndo">&#8630; Annuler le dernier point</button>
+</div></div>
+
+<div id="tmoOverlay" class="overlay hidden"><div class="card">
+  <h2 id="tmoTitle">Temps mort</h2>
+  <div id="tmoCount">60</div>
+  <button class="go" id="tmoEnd">Reprendre le jeu</button>
+</div></div>
+
+<div id="confirmNew" class="overlay hidden"><div class="card">
+  <h2>Nouveau match ?</h2><p>Le match en cours sera effacé.</p>
+  <button class="go" id="cnYes">Oui, nouveau match</button>
+  <button id="cnNo">Non, continuer</button>
+</div></div>
+
+<div id="toast" class="hidden"></div>
+
+<script>
+// ES5 uniquement (Safari 9) : pas de let/const, pas de fonctions fléchées, pas de template strings.
+(function () {
+  'use strict';
+  var KEY = 'ttScore.v1';
+  var S = null;          // état du match
+  var undoStack = [];
+  var tmoTimer = null, toastTimer = null;
+
+  function $(id) { return document.getElementById(id); }
+  function q(el, sel) { return el.querySelector(sel); }
+  function show(el) { el.classList.remove('hidden'); }
+  function hide(el) { el.classList.add('hidden'); }
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+  // Tap rapide : touchstart sur iPad, click à la souris
+  function tap(el, fn) {
+    var touched = false;
+    el.addEventListener('touchstart', function (e) { touched = true; e.preventDefault(); e.stopPropagation(); fn(e); }, false);
+    el.addEventListener('click', function (e) { if (touched) { touched = false; return; } e.stopPropagation(); fn(e); }, false);
+  }
+
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify({ s: S, u: undoStack.slice(-200) })); } catch (e) {}
+  }
+  function load() {
+    try { var d = JSON.parse(localStorage.getItem(KEY)); if (d && d.s) { S = d.s; undoStack = d.u || []; return true; } } catch (e) {}
+    return false;
+  }
+
+  // ---------- Règles ----------
+  function needed() { return Math.floor(S.bestOf / 2) + 1; }
+  function isDeciding() { return S.gameIndex === S.bestOf - 1; }
+  function server() {
+    // Celui qui a servi en premier dans une manche reçoit en premier dans la suivante.
+    var first = (S.firstServer + S.gameIndex) % 2;
+    var t = S.points[0] + S.points[1];
+    var k = t < 20 ? Math.floor(t / 2) : t - 10; // 2 services chacun, puis 1 à partir de 10-10
+    return (first + k) % 2;
+  }
+  function gameWon() {
+    var a = S.points[0], b = S.points[1];
+    if (a >= 11 && a - b >= 2) return 0;
+    if (b >= 11 && b - a >= 2) return 1;
+    return -1;
+  }
+
+  function pushUndo() { undoStack.push(clone(S)); if (undoStack.length > 300) undoStack.shift(); }
+
+  function addPoint(p) {
+    if (S.pending !== null || S.finished) return;
+    pushUndo();
+    S.points[p]++;
+    var w = gameWon();
+    if (w >= 0) {
+      S.games[w]++;
+      S.history.push([S.points[0], S.points[1]]);
+      S.pending = w;
+      if (S.games[w] >= needed()) S.finished = true;
+    } else if (isDeciding() && !S.decSwapped && (S.points[0] === 5 || S.points[1] === 5)) {
+      S.decSwapped = true;
+      S.swapped = !S.swapped;
+      toast('Changement de côté !');
+    }
+    save(); render();
+  }
+
+  function removePoint(p) {
+    if (S.pending !== null || S.points[p] <= 0) return;
+    pushUndo();
+    S.points[p]--;
+    save(); render();
+  }
+
+  function undo() {
+    if (!undoStack.length) { toast('Rien à annuler'); return; }
+    S = undoStack.pop();
+    save(); render();
+  }
+
+  function nextGame() {
+    if (S.finished) return;
+    pushUndo();
+    S.points = [0, 0];
+    S.gameIndex++;
+    S.pending = null;
+    S.swapped = !S.swapped; // on change de côté à chaque manche
+    S.decSwapped = false;
+    save(); render();
+  }
+
+  // ---------- Affichage ----------
+  function sizeFonts() {
+    var h = $('panels').offsetHeight, w = $('panels').offsetWidth / 2;
+    var fs = Math.min(h * 0.58, w * 0.62);
+    var pts = document.querySelectorAll('.points');
+    for (var i = 0; i < pts.length; i++) {
+      pts[i].style.fontSize = Math.round(fs) + 'px';
+      pts[i].style.top = Math.round(h * 0.47 - fs * 0.5) + 'px';
+    }
+  }
+
+  function fillPanel(el, p) {
+    el.className = 'panel ' + (el.id === 'panelL' ? 'left' : 'right') + ' p' + p;
+    el.setAttribute('data-p', p);
+    q(el, '.pname').textContent = S.names[p];
+    q(el, '.points').textContent = S.points[p];
+    q(el, '.games').textContent = S.games[p];
+    var srv = S.pending === null && !S.finished && server() === p;
+    q(el, '.serve').style.visibility = srv ? 'visible' : 'hidden';
+    var t = S.points[0] + S.points[1];
+    q(el, '.serveText').textContent = srv ? (t >= 20 ? 'Service (1 seul)' : (t % 2 === 0 ? 'Service 1/2' : 'Service 2/2')) : '';
+    var tb = q(el, '.tmo');
+    tb.className = 'tmo' + (S.timeouts[p] ? ' used' : '');
+    tb.textContent = S.timeouts[p] ? 'Temps mort pris' : 'Temps mort';
+  }
+
+  function render() {
+    var left = S.swapped ? 1 : 0;
+    fillPanel($('panelL'), left);
+    fillPanel($('panelR'), 1 - left);
+
+    var a = S.points[0], b = S.points[1], info = 'Manche ' + (S.gameIndex + 1) + ' · en ' + S.bestOf;
+    if (S.pending === null && !S.finished) {
+      if ((a >= 10 || b >= 10) && Math.abs(a - b) === 1) info += ' · Balle de manche';
+      if (a >= 10 && b >= 10 && a === b) info += ' · Égalité';
+    }
+    $('matchInfo').textContent = info;
+
+    var h = '';
+    for (var i = 0; i < S.history.length; i++) {
+      var g = S.history[i], w = g[0] > g[1] ? 0 : 1;
+      h += '<span>' + (w === 0 ? '<b class="w0">' + g[0] + '</b>' : g[0]) + ' – ' + (w === 1 ? '<b class="w1">' + g[1] + '</b>' : g[1]) + '</span>';
+    }
+    $('history').innerHTML = h || '<span style="background:none;color:#5c6b82">Scores des manches</span>';
+
+    if (S.pending !== null) {
+      var name = S.names[S.pending];
+      var last = S.history[S.history.length - 1];
+      if (S.finished) {
+        $('goTitle').textContent = '🏆 ' + name + ' gagne le match !';
+        $('goText').textContent = 'Manches ' + S.games[S.pending] + ' – ' + S.games[1 - S.pending] + '  (dernière : ' + last[0] + '-' + last[1] + ')';
+        $('nextBtn').textContent = 'Nouveau match';
+      } else {
+        $('goTitle').textContent = 'Manche pour ' + name;
+        $('goText').textContent = last[0] + ' – ' + last[1] + '   ·   Manches : ' + S.games[0] + ' – ' + S.games[1];
+        $('nextBtn').textContent = 'Manche suivante (changement de côté)';
+      }
+      show($('gameOver'));
+    } else {
+      hide($('gameOver'));
+    }
+    sizeFonts();
+  }
+
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg; show(t);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { hide(t); }, 2500);
+  }
+
+  // ---------- Temps mort ----------
+  function startTimeout(p) {
+    if (S.timeouts[p] || S.pending !== null) return;
+    pushUndo();
+    S.timeouts[p] = true; save(); render();
+    var left = 60;
+    $('tmoTitle').textContent = 'Temps mort – ' + S.names[p];
+    $('tmoCount').textContent = left;
+    show($('tmoOverlay'));
+    clearInterval(tmoTimer);
+    tmoTimer = setInterval(function () {
+      left--; $('tmoCount').textContent = left;
+      if (left <= 0) endTimeout();
+    }, 1000);
+  }
+  function endTimeout() { clearInterval(tmoTimer); hide($('tmoOverlay')); }
+
+  // ---------- Écran de configuration ----------
+  function choiceGroup(id) {
+    var btns = $(id).querySelectorAll('.choice');
+    for (var i = 0; i < btns.length; i++) {
+      (function (b) {
+        tap(b, function () {
+          for (var j = 0; j < btns.length; j++) btns[j].classList.remove('on');
+          b.classList.add('on');
+        });
+      })(btns[i]);
+    }
+  }
+  function choiceVal(id) { return parseInt(q($(id), '.choice.on').getAttribute('data-v'), 10); }
+
+  function openSetup() {
+    endTimeout();
+    hide($('board')); hide($('gameOver')); hide($('confirmNew'));
+    if (S && !S.finished) show($('resumeBtn')); else hide($('resumeBtn'));
+    show($('setup'));
+  }
+  function openBoard() { hide($('setup')); show($('board')); render(); }
+
+  function startMatch() {
+    var n0 = $('n0').value.replace(/^\s+|\s+$/g, '') || 'Joueur 1';
+    var n1 = $('n1').value.replace(/^\s+|\s+$/g, '') || 'Joueur 2';
+    if (document.activeElement) document.activeElement.blur();
+    S = { names: [n0, n1], bestOf: choiceVal('bestOf'), firstServer: choiceVal('firstServ'),
+          points: [0, 0], games: [0, 0], gameIndex: 0, history: [], pending: null, finished: false,
+          swapped: false, decSwapped: false, timeouts: [false, false] };
+    undoStack = [];
+    save(); openBoard();
+  }
+
+  function updateServerLabels() {
+    $('fs0').textContent = $('n0').value || 'Joueur 1';
+    $('fs1').textContent = $('n1').value || 'Joueur 2';
+  }
+
+  // ---------- Branchements ----------
+  choiceGroup('bestOf'); choiceGroup('firstServ');
+  $('n0').addEventListener('input', updateServerLabels, false);
+  $('n1').addEventListener('input', updateServerLabels, false);
+  tap($('startBtn'), startMatch);
+  tap($('resumeBtn'), function () { if (document.activeElement) document.activeElement.blur(); openBoard(); });
+
+  ['panelL', 'panelR'].forEach(function (id) {
+    var el = $(id);
+    tap(el, function () {
+      el.classList.add('pressed');
+      setTimeout(function () { el.classList.remove('pressed'); }, 120);
+      addPoint(parseInt(el.getAttribute('data-p'), 10));
+    });
+    tap(q(el, '.minus'), function () { removePoint(parseInt(el.getAttribute('data-p'), 10)); });
+    tap(q(el, '.tmo'), function () { startTimeout(parseInt(el.getAttribute('data-p'), 10)); });
+  });
+
+  tap($('undoBtn'), undo);
+  tap($('goUndo'), undo);
+  tap($('swapBtn'), function () { S.swapped = !S.swapped; save(); render(); });
+  tap($('nextBtn'), function () { if (S.finished) { openSetup(); } else { nextGame(); } });
+  tap($('newBtn'), function () { if (S.finished) openSetup(); else show($('confirmNew')); });
+  tap($('cnYes'), function () {
+    hide($('confirmNew'));
+    if (S) { $('n0').value = S.names[0]; $('n1').value = S.names[1]; updateServerLabels(); }
+    S = null; undoStack = []; try { localStorage.removeItem(KEY); } catch (e) {}
+    openSetup();
+  });
+  tap($('cnNo'), function () { hide($('confirmNew')); });
+  tap($('tmoEnd'), endTimeout);
+
+  // Empêche le défilement / rebond de la page sur le tableau
+  document.addEventListener('touchmove', function (e) {
+    if ($('setup').classList.contains('hidden')) e.preventDefault();
+  }, false);
+  window.addEventListener('resize', function () { if (S) sizeFonts(); }, false);
+  window.addEventListener('orientationchange', function () { setTimeout(function () { if (S) sizeFonts(); }, 300); }, false);
+
+  if (load()) {
+    $('n0').value = S.names[0]; $('n1').value = S.names[1]; updateServerLabels();
+    if (S.finished) openSetup(); else openBoard();
+  } else {
+    openSetup();
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,21 +1,26 @@
 /**
- * Stockage des résultats de matchs dans une feuille Google Sheets.
+ * Stockage des résultats de matchs dans une feuille Google Sheets + score en direct.
  * À coller dans Extensions > Apps Script de la feuille, puis déployer en
  * « Application Web » (Exécuter en tant que : moi, Accès : tout le monde).
  *
  * Appels (JSONP, compatibles iPad 2 / Safari 9) :
- *   ?action=list&callback=f                       -> liste des matchs
- *   ?action=add&cle=...&id=...&...&callback=f     -> ajoute un match
+ *   ?action=add&id=...&...&callback=f      -> enregistre un match terminé (sans code)
+ *   ?action=live&id=...&etat={...}         -> score en direct d'un match en cours (sans code)
+ *   ?action=stop&id=...                    -> match abandonné : retiré du direct
+ *   ?action=list&code=...&callback=f       -> résultats + matchs en direct (code de consultation)
  */
 
-// Code secret demandé pour enregistrer un match (à changer !).
-// Il n'est jamais publié sur GitHub : on le saisit une seule fois sur l'iPad.
-var CLE = 'changez-moi';
+// Code demandé pour consulter les résultats et le direct (à changer !).
+// Il n'est jamais publié sur GitHub : on le donne aux personnes autorisées.
+var CODE_CONSULTATION = 'changez-moi';
 
 var COLONNES = ['id', 'date', 'joueur1', 'joueur2', 'manches1', 'manches2',
                 'vainqueur', 'detail', 'format', 'duree_min',
                 // Rencontre par équipes (vide pour un match simple)
                 'rencontre_id', 'journee', 'club1', 'club2', 'partie', 'ordre'];
+
+var DUREE_DIRECT_MS = 3 * 3600 * 1000;   // un direct sans nouvelle depuis 3 h est retiré
+var DUREE_FINI_MS = 24 * 3600 * 1000;    // mémoire des matchs terminés (évite un direct fantôme)
 
 function feuille_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -45,21 +50,29 @@ function doGet(e) {
   var p = (e && e.parameter) || {};
   try {
     if (p.action === 'add') return reponse_(e, ajouter_(p));
-    return reponse_(e, { ok: true, matchs: lister_() });
+    if (p.action === 'live') return reponse_(e, majDirect_(p));
+    if (p.action === 'stop') return reponse_(e, arreterDirect_(p));
+    if (String(p.code || '') !== CODE_CONSULTATION) {
+      return reponse_(e, { ok: false, code: true, erreur: 'Code de consultation incorrect' });
+    }
+    return reponse_(e, { ok: true, matchs: lister_(), direct: direct_(), maintenant: Date.now() });
   } catch (err) {
     return reponse_(e, { ok: false, erreur: String(err) });
   }
 }
 
 function ajouter_(p) {
-  if (p.cle !== CLE) return { ok: false, erreur: 'Code d\'enregistrement incorrect' };
   if (!p.id) return { ok: false, erreur: 'id manquant' };
 
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
+    var props = PropertiesService.getScriptProperties();
+    props.setProperty('done_' + p.id, String(Date.now()));
+    props.deleteProperty('live_' + p.id);
+
     var sh = feuille_();
-    // Pas de doublon si l'iPad renvoie un match déjà reçu
+    // Pas de doublon si l'appareil renvoie un match déjà reçu
     var n = sh.getLastRow();
     if (n > 1) {
       var ids = sh.getRange(2, 1, n - 1, 1).getValues();
@@ -86,4 +99,37 @@ function lister_() {
     for (var i = 0; i < COLONNES.length; i++) o[COLONNES[i]] = r[i];
     return o;
   });
+}
+
+// ---------- Score en direct (stocké dans les propriétés du script) ----------
+function majDirect_(p) {
+  if (!p.id || !p.etat || p.etat.length > 8000) return { ok: false, erreur: 'état invalide' };
+  var props = PropertiesService.getScriptProperties();
+  if (props.getProperty('done_' + p.id)) return { ok: true, ignore: true }; // déjà enregistré
+  var etat = JSON.parse(p.etat);
+  etat.id = p.id;
+  etat.maj = Date.now();
+  props.setProperty('live_' + p.id, JSON.stringify(etat));
+  return { ok: true };
+}
+
+function arreterDirect_(p) {
+  if (p.id) PropertiesService.getScriptProperties().deleteProperty('live_' + p.id);
+  return { ok: true };
+}
+
+function direct_() {
+  var props = PropertiesService.getScriptProperties();
+  var tout = props.getProperties(), out = [], now = Date.now();
+  for (var k in tout) {
+    if (k.indexOf('live_') === 0) {
+      var etat;
+      try { etat = JSON.parse(tout[k]); } catch (err) { props.deleteProperty(k); continue; }
+      if (now - etat.maj > DUREE_DIRECT_MS) props.deleteProperty(k);
+      else out.push(etat);
+    } else if (k.indexOf('done_') === 0 && now - Number(tout[k]) > DUREE_FINI_MS) {
+      props.deleteProperty(k);
+    }
+  }
+  return out;
 }

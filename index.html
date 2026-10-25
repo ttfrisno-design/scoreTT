@@ -260,10 +260,8 @@ html, body { overscroll-behavior: none; }
     <button id="resumeBtn" class="hidden">Reprendre le match en cours</button>
     </div>
     <div id="online">
-      <label for="cle">Code d'enregistrement en ligne</label>
-      <input type="text" id="cle" maxlength="40" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
       <div id="syncStatus"></div>
-      <a id="resultsLink" href="resultats.html">&#128203; Voir les résultats des matchs</a>
+      <a id="resultsLink" href="resultats.html">&#128203; Résultats et matchs en direct</a>
     </div>
   </div>
 </div>
@@ -362,6 +360,7 @@ html, body { overscroll-behavior: none; }
 
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify({ s: S, u: undoStack.slice(-200) })); } catch (e) {}
+    if (S) sendLive();
   }
   function load() {
     try { var d = JSON.parse(localStorage.getItem(KEY)); if (d && d.s) { S = d.s; undoStack = d.u || []; return true; } } catch (e) {}
@@ -503,11 +502,11 @@ html, body { overscroll-behavior: none; }
   }
 
   // ---------- Enregistrement en ligne (file d'attente + JSONP, OK hors ligne) ----------
-  var QKEY = 'ttScore.queue', CKEY = 'ttScore.cle', jsonpN = 0, sending = false;
+  var QKEY = 'ttScore.queue', jsonpN = 0, sending = false;
 
   function getQueue() { try { return JSON.parse(localStorage.getItem(QKEY)) || []; } catch (e) { return []; } }
   function setQueue(q) { try { localStorage.setItem(QKEY, JSON.stringify(q)); } catch (e) {} }
-  function getCle() { try { return localStorage.getItem(CKEY) || ''; } catch (e) { return ''; } }
+  function apiOk() { return typeof SCORE_API !== 'undefined' && !!SCORE_API; }
 
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   function fmtDate(t) {
@@ -563,20 +562,19 @@ html, body { overscroll-behavior: none; }
     var n = getQueue().length;
     if (!n) { setSync('Tous les matchs sont enregistrés en ligne.', 'ok'); return; }
     var t = n + ' match' + (n > 1 ? 's' : '') + ' en attente d\'envoi.';
-    if (typeof SCORE_API === 'undefined' || !SCORE_API) t += ' (Adresse du serveur non configurée)';
-    else if (!getCle()) t += ' Saisissez le code d\'enregistrement.';
+    if (!apiOk()) t += ' (Adresse du serveur non configurée)';
     setSync(t, '');
   }
 
   function flushQueue() {
     syncText();
-    if (sending || typeof SCORE_API === 'undefined' || !SCORE_API || !getCle()) return;
+    if (sending || !apiOk()) return;
     var q = getQueue();
     if (!q.length) return;
     sending = true;
     setSync('Envoi des résultats…', '');
     var rec = clone(q[0]);
-    rec.action = 'add'; rec.cle = getCle();
+    rec.action = 'add';
     jsonp(rec, function (err, data) {
       sending = false;
       if (err) { syncText(); setSync($('syncStatus').textContent + ' Pas de connexion, nouvel essai plus tard.', 'err'); return; }
@@ -587,6 +585,31 @@ html, body { overscroll-behavior: none; }
       if (q2.length) flushQueue(); else { syncText(); toast('Résultat enregistré en ligne ✓'); }
     });
   }
+
+  // ---------- Score en direct : l'état du match est envoyé à chaque changement ----------
+  // Un seul envoi à la fois ; les changements faits pendant un envoi partent juste après.
+  var liveBusy = false, liveDirty = false, liveTimer = null;
+
+  function livePayload() {
+    var o = { n: S.names, p: S.points, g: S.games, h: S.history, bo: S.bestOf,
+              sv: S.pending === null && !S.finished ? server() : -1, fin: S.finished ? 1 : 0 };
+    var R = S.renc ? loadRenc() : null;
+    if (R && R.id === S.renc.id) o.r = { id: R.id, c1: R.clubs[0], c2: R.clubs[1], l: S.renc.label, i: S.renc.idx, j: R.journee };
+    else o.j = fmtDate(S.startedAt).slice(0, 10);
+    return o;
+  }
+
+  function sendLive() {
+    if (!S || !apiOk()) return;
+    if (liveBusy) { liveDirty = true; return; }
+    liveBusy = true; liveDirty = false;
+    jsonp({ action: 'live', id: S.id, etat: JSON.stringify(livePayload()) }, function () {
+      liveBusy = false;
+      if (liveDirty) { clearTimeout(liveTimer); liveTimer = setTimeout(sendLive, 800); }
+    });
+  }
+
+  function stopLive(id) { if (id && apiOk()) jsonp({ action: 'stop', id: id }, function () {}); }
 
   // ---------- Temps mort ----------
   function startTimeout(p) {
@@ -633,7 +656,7 @@ html, body { overscroll-behavior: none; }
     keepAwake(false);
     flushQueue();
   }
-  function openBoard() { hide($('setup')); show($('board')); render(); keepAwake(true); }
+  function openBoard() { hide($('setup')); show($('board')); render(); keepAwake(true); if (!S.finished) sendLive(); }
 
   // Garde l'écran allumé pendant un match (téléphones/PC récents ; absent sur l'iPad 2)
   var wakeLock = null;
@@ -868,21 +891,17 @@ html, body { overscroll-behavior: none; }
   tap($('ceYes'), function () {
     hide($('confirmEnd'));
     try { localStorage.removeItem(RKEY); } catch (e) {}
-    if (S && S.renc && !S.finished) { S = null; undoStack = []; try { localStorage.removeItem(KEY); } catch (e) {} }
+    if (S && S.renc && !S.finished) { stopLive(S.id); S = null; undoStack = []; try { localStorage.removeItem(KEY); } catch (e) {} }
     teamEditing = false; fillTeamForm(null); renderTeam();
   });
   tap($('pvGo'), startPartie);
   tap($('pvCancel'), function () { hide($('partieOv')); });
   fillTeamForm(loadRenc());
-  $('cle').addEventListener('change', function () {
-    try { localStorage.setItem(CKEY, $('cle').value.replace(/^\s+|\s+$/g, '')); } catch (e) {}
-    flushQueue();
-  }, false);
-  $('cle').value = getCle();
-  window.addEventListener('online', flushQueue, false);
+  window.addEventListener('online', function () { flushQueue(); if (S && !S.finished) sendLive(); }, false);
   tap($('cnYes'), function () {
     hide($('confirmNew'));
     if (S && !S.renc) { $('n0').value = S.names[0]; $('n1').value = S.names[1]; updateServerLabels(); }
+    if (S) stopLive(S.id);
     S = null; undoStack = []; try { localStorage.removeItem(KEY); } catch (e) {}
     openSetup();
   });

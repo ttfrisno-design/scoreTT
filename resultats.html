@@ -84,6 +84,23 @@ h2 { margin: 6px 0 14px; font-size: 22px; color: #cfd8e6; font-weight: normal; }
 .live .sets { margin-top: 6px; color: #9fb0c8; font-size: 15px; }
 .colh { overflow: hidden; color: #5c6b82; font-size: 12px; }
 .colh span { float: right; text-align: center; } .colh .a { width: 64px; margin-left: 10px; } .colh .b { width: 40px; }
+
+/* Tableau des scores : 2 lignes, une colonne par manche, toujours 2 chiffres */
+table.st { width: 100%; border-collapse: separate; border-spacing: 4px; margin: 0 -4px; }
+.st th { padding: 0; font-size: 12px; font-weight: normal; color: #5c6b82; text-align: center; }
+.st td { padding: 0; font-size: 20px; line-height: 36px; text-align: center; }
+.st td.n { width: 100%; max-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: left; }
+.st td.g { min-width: 36px; font-weight: bold; background: #10141c; border-radius: 6px; }
+.st td.s { min-width: 36px; font-size: 18px; color: #9fb0c8; background: #151b26; border-radius: 6px; }
+.st td.s.w { color: #fff; font-weight: bold; }
+.st td.pt { min-width: 56px; font-size: 28px; font-weight: bold; background: #10141c; border-radius: 8px; }
+.st tr.win td.n { font-weight: bold; }
+.st tr.win td.n:after { content: " \2714"; color: #6fdc9a; font-size: 17px; }
+.st .sv { display: inline-block; width: 12px; height: 12px; border-radius: 6px; background: #fff; margin-left: 8px; vertical-align: middle; }
+@media (max-width: 600px) {
+  .st td { font-size: 17px; line-height: 32px; } .st td.s { min-width: 28px; font-size: 15px; } .st td.g { min-width: 28px; }
+  .st td.pt { min-width: 44px; font-size: 22px; } table.st { border-spacing: 3px; margin: 0 -3px; }
+}
 </style>
 </head>
 <body>
@@ -196,17 +213,10 @@ h2 { margin: 6px 0 14px; font-size: 22px; color: #cfd8e6; font-weight: normal; }
     var ago = srvNow && e.maj ? Math.max(0, Math.round((srvNow - e.maj) / 1000)) : 0;
     var agoTxt = ago < 60 ? 'il y a ' + ago + ' s' : 'il y a ' + Math.round(ago / 60) + ' min';
     var lbl = e.r ? 'Partie ' + (e.r.i + 1) + ' · ' + esc(String(e.r.l).replace(/^([A-D])([W-Z])$/, '$1 – $2')) : 'Match simple';
-    var sets = [];
-    for (var i = 0; i < (e.h || []).length; i++) sets.push(e.h[i][0] + '-' + e.h[i][1]);
-    var h = '<div class="live' + (e.fin ? ' fin' : '') + '"><div class="top"><span class="r">' + agoTxt + '</span>' +
+    var h = '<div class="live' + (e.fin ? ' fin' : '') + '"><div class="top"><span class="r">' + agoTxt + ' · en ' + esc(e.bo) + '</span>' +
       (e.fin ? '<span class="lbl">Terminé</span>' : '<span class="dot"></span><span class="lbl">En direct</span>') + lbl +
-      (e.r ? ' · <span class="c1">' + esc(e.r.c1) + '</span> – <span class="c2">' + esc(e.r.c2) + '</span>' : '') + '</div>' +
-      '<div class="colh"><span class="a">points</span><span class="b">manches</span></div>';
-    for (var k = 0; k < 2; k++) {
-      h += '<div class="lr"><span class="n">' + esc(e.n[k]) + (e.sv === k ? '<span class="sv" title="Au service"></span>' : '') + '</span>' +
-        '<span class="pt">' + esc(e.p[k]) + '</span><span class="gm">' + esc(e.g[k]) + '</span></div>';
-    }
-    return h + '<div class="sets">' + (sets.length ? 'Manches : ' + sets.join('  ') : 'Première manche') + ' · en ' + esc(e.bo) + '</div></div>';
+      (e.r ? ' · <span class="c1">' + esc(e.r.c1) + '</span> – <span class="c2">' + esc(e.r.c2) + '</span>' : '') + '</div>';
+    return h + scoreTable([e.n[0], e.n[1]], [e.g[0], e.g[1]], e.h || [], e.fin ? null : [e.p[0], e.p[1]], e.fin ? -1 : e.sv) + '</div>';
   }
 
   function liveHtml(filter) {
@@ -285,14 +295,35 @@ h2 { margin: 6px 0 14px; font-size: 22px; color: #cfd8e6; font-weight: normal; }
     $('view').innerHTML = h;
   }
 
+  function p2(x) { x = String(x == null ? '' : x); return x.length < 2 ? '0' + x : x; }
+
+  // Tableau 2 lignes : nom | manches gagnées | score de chaque manche (2 chiffres) | points en cours (direct)
+  function scoreTable(names, games, sets, pts, sv) {
+    var g1 = parseInt(games[0], 10) || 0, g2 = parseInt(games[1], 10) || 0, i, k;
+    var h = '<table class="st"><tr><th></th><th>Man.</th>';
+    for (i = 0; i < sets.length; i++) h += '<th>' + (i + 1) + '</th>';
+    if (pts) h += '<th>Pts</th>';
+    h += '</tr>';
+    for (k = 0; k < 2; k++) {
+      var win = !pts && (k === 0 ? g1 > g2 : g2 > g1);
+      h += '<tr' + (win ? ' class="win"' : '') + '><td class="n">' + esc(names[k]) + (sv === k ? '<span class="sv" title="Au service"></span>' : '') +
+        '</td><td class="g">' + (k === 0 ? g1 : g2) + '</td>';
+      for (i = 0; i < sets.length; i++) {
+        var a = parseInt(sets[i][k], 10) || 0, b = parseInt(sets[i][1 - k], 10) || 0;
+        h += '<td class="s' + (a > b ? ' w' : '') + '">' + p2(a) + '</td>';
+      }
+      if (pts) h += '<td class="pt">' + p2(pts[k]) + '</td>';
+      h += '</tr>';
+    }
+    return h + '</table>';
+  }
+
   function matchCard(m, label) {
-    var g1 = parseInt(m.manches1, 10) || 0, g2 = parseInt(m.manches2, 10) || 0;
-    var sets = String(m.detail || '').split(' '), d1 = [], d2 = [];
-    for (var j = 0; j < sets.length; j++) { var p = sets[j].split('-'); if (p.length === 2) { d1.push(p[0]); d2.push(p[1]); } }
+    var raw = String(m.detail || '').split(' '), sets = [];
+    for (var j = 0; j < raw.length; j++) { var p = raw[j].split('-'); if (p.length === 2) sets.push(p); }
     return '<div class="match"><div class="top"><span class="r">' + esc(m.format || '') + (m.duree_min ? ' · ' + esc(m.duree_min) + ' min' : '') +
       '</span>' + (label ? '<span class="lbl">' + label + '</span>' : '') + hour(m.date) + '</div>' +
-      '<div class="row' + (g1 > g2 ? ' win' : '') + '"><span class="n">' + esc(m.joueur1) + '</span><span class="g">' + g1 + '</span><span class="d">' + esc(d1.join('  ')) + '</span></div>' +
-      '<div class="row' + (g2 > g1 ? ' win' : '') + '"><span class="n">' + esc(m.joueur2) + '</span><span class="g">' + g2 + '</span><span class="d">' + esc(d2.join('  ')) + '</span></div></div>';
+      scoreTable([m.joueur1, m.joueur2], [m.manches1, m.manches2], sets, null, -1) + '</div>';
   }
 
   function partieLabel(m) {

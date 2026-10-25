@@ -172,6 +172,12 @@ html, body { overscroll-behavior: none; }
   .panel { width: 100%; }
   .panel.left { top: 0; bottom: 50%; }
   .panel.right { top: 50%; bottom: 0; left: 0; border-left: 0; border-top: 3px solid #0a0d13; }
+  /* boutons du bas plus compacts pour laisser la place aux grands chiffres */
+  .games, .minus { width: 52px; height: 52px; line-height: 52px; font-size: 30px; bottom: 8px; }
+  .minus { line-height: 48px; border-radius: 26px; }
+  .gamesLbl { bottom: 62px; width: 52px; }
+  .tmo { bottom: 12px; width: 110px; height: 36px; margin-left: -55px; font-size: 14px; }
+  .pname { top: 8px; font-size: 26px; } .serve { top: 12px; } .serveText { top: 42px; font-size: 15px; }
 }
 /* Écran bas (téléphone en largeur) */
 @media (max-height: 500px) {
@@ -436,9 +442,13 @@ html, body { overscroll-behavior: none; }
     var ids = ['panelL', 'panelR'];
     for (var i = 0; i < ids.length; i++) {
       var el = $(ids[i]), h = el.offsetHeight, w = el.offsetWidth;
-      var fs = Math.min(h * 0.52, w * 0.62), pt = q(el, '.points');
+      // +40 % par rapport à la taille d'origine (0,52 × hauteur, 0,62 × largeur)
+      var fs = Math.min(h * 0.73, w * 0.87), pt = q(el, '.points');
+      // Centrés entre les textes du haut (nom, service) et les boutons du bas
+      var st = q(el, '.serveText'), haut = st.offsetTop + st.offsetHeight;
+      var bas = Math.min(q(el, '.minus').offsetTop, q(el, '.games').offsetTop, q(el, '.tmo').offsetTop);
       pt.style.fontSize = Math.round(fs) + 'px';
-      pt.style.top = Math.round(h * 0.47 - fs * 0.5) + 'px';
+      pt.style.top = Math.round((haut + bas) / 2 - fs * 0.5) + 'px';
     }
   }
 

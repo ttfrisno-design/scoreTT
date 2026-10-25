@@ -1,0 +1,16 @@
+{
+  "name": "Score Tennis de table",
+  "short_name": "Score TT",
+  "description": "Tableau de score de tennis de table : matchs simples et rencontres par équipes.",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#10141c",
+  "theme_color": "#10141c",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

@@ -7,6 +7,15 @@
 
 Site : https://ttfrisno-design.github.io/scoreTT/
 
+## Appareils
+
+- **iPad 2 (iOS 9)** et tablettes : joueurs côte à côte. Safari > Partager > « Sur l'écran d'accueil ».
+- **Téléphone Android / iPhone** : en hauteur, les joueurs sont l'un au-dessus de l'autre ; en largeur, côte à côte.
+  Chrome > ⋮ > « Ajouter à l'écran d'accueil » (ou « Installer l'application »).
+  L'écran reste allumé pendant un match et le site fonctionne sans réseau une fois ouvert.
+- **PC** : souris, ou clavier : ← / → point au joueur de gauche / droite, Maj + flèche pour retirer un point,
+  Retour arrière ou Ctrl+Z pour annuler, Entrée pour continuer, Échap pour fermer une fenêtre.
+
 ## Rencontre par équipes (4 contre 4)
 
 Onglet « Rencontre par équipes » : saisir la journée, les deux clubs et les joueurs A B C D / W X Y Z.

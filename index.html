@@ -8,6 +8,11 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Score TT">
 <meta name="format-detection" content="telephone=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#10141c">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
 /* Compatible Safari 9 (iPad 2 / iOS 9.3.5) : pas de grid, pas de variables CSS, flex préfixé */
 * { -webkit-box-sizing: border-box; box-sizing: border-box; -webkit-tap-highlight-color: rgba(0,0,0,0); }
@@ -137,6 +142,49 @@ button { font-family: inherit; cursor: pointer; }
 #toast { position: absolute; top: 90px; left: 50%; width: 420px; margin-left: -210px; padding: 16px; z-index: 20; border-radius: 12px;
   background: #f5c400; color: #000; font-size: 26px; font-weight: bold; text-align: center; }
 @media (max-width: 600px) { .overlay .card { width: 92%; margin-left: -46%; } #toast { width: 92%; margin-left: -46%; } }
+
+/* ---------- Téléphones, PC, navigateurs récents (ignoré sans risque par l'iPad 2) ---------- */
+/* Ce bloc doit rester en fin de feuille pour l'emporter sur les règles de base. */
+html, body { overscroll-behavior: none; }
+#board { touch-action: none; }
+.overlay .card { max-height: 94%; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+/* Écran étroit (téléphone) */
+@media (max-width: 599px) {
+  #topbar { height: 92px; }
+  #topbar button { height: 44px; padding: 0 10px; margin-right: 4px; font-size: 15px; }
+  #matchInfo { float: none; display: block; line-height: 30px; font-size: 14px; padding: 2px 4px 0; }
+  #panels { top: 92px; }
+  #history { font-size: 18px; } #history span { margin: 0 4px; padding: 0 8px; }
+  .overlay h2 { font-size: 26px; } .overlay p { font-size: 19px; }
+  .overlay .card { padding: 20px 16px; }
+  #setup { padding: 12px 10px; } #setup .box { padding: 18px 14px; }
+  #setup h1 { font-size: 26px; }
+  .tab { font-size: 16px; }
+  .teamCol { float: none; width: auto; } .teamCol + .teamCol { margin-left: 0; }
+  .prow { font-size: 17px; padding: 12px 8px; } .prow .pm { width: 46%; } .prow .pl { width: 54px; }
+  .prow .pn { width: 28px; } .prow.dbl .pl { width: 82px; } .prow.dbl .pm { width: 34%; }
+  #teamHead .sc { font-size: 20px; } #teamHead .sc b { min-width: 40px; margin: 0 6px; }
+}
+/* Téléphone tenu en hauteur : joueurs l'un au-dessus de l'autre */
+@media (max-width: 599px) and (orientation: portrait) {
+  .panel { width: 100%; }
+  .panel.left { top: 0; bottom: 50%; }
+  .panel.right { top: 50%; bottom: 0; left: 0; border-left: 0; border-top: 3px solid #0a0d13; }
+}
+/* Écran bas (téléphone en largeur) */
+@media (max-height: 500px) {
+  #topbar { height: 52px; padding: 4px 8px; }
+  #topbar button { height: 44px; }
+  #matchInfo { line-height: 44px; }
+  #panels { top: 52px; bottom: 40px; }
+  #history { height: 40px; line-height: 40px; font-size: 18px; } #history span { line-height: 30px; }
+  .games, .minus { width: 56px; height: 56px; line-height: 56px; font-size: 34px; bottom: 8px; }
+  .minus { line-height: 52px; border-radius: 28px; }
+  .gamesLbl { bottom: 66px; width: 56px; }
+  .tmo { bottom: 14px; width: 120px; height: 40px; margin-left: -60px; font-size: 14px; }
+  .pname { top: 8px; font-size: 24px; } .serve { top: 10px; } .serveText { top: 40px; font-size: 15px; }
+}
 </style>
 </head>
 <body>
@@ -382,13 +430,14 @@ button { font-family: inherit; cursor: pointer; }
   }
 
   // ---------- Affichage ----------
+  // Taille des chiffres calculée d'après chaque panneau (côte à côte ou l'un sur l'autre)
   function sizeFonts() {
-    var h = $('panels').offsetHeight, w = $('panels').offsetWidth / 2;
-    var fs = Math.min(h * 0.58, w * 0.62);
-    var pts = document.querySelectorAll('.points');
-    for (var i = 0; i < pts.length; i++) {
-      pts[i].style.fontSize = Math.round(fs) + 'px';
-      pts[i].style.top = Math.round(h * 0.47 - fs * 0.5) + 'px';
+    var ids = ['panelL', 'panelR'];
+    for (var i = 0; i < ids.length; i++) {
+      var el = $(ids[i]), h = el.offsetHeight, w = el.offsetWidth;
+      var fs = Math.min(h * 0.52, w * 0.62), pt = q(el, '.points');
+      pt.style.fontSize = Math.round(fs) + 'px';
+      pt.style.top = Math.round(h * 0.47 - fs * 0.5) + 'px';
     }
   }
 
@@ -581,9 +630,23 @@ button { font-family: inherit; cursor: pointer; }
     if (S && !S.finished && !S.renc) show($('resumeBtn')); else hide($('resumeBtn'));
     show($('setup'));
     setMode(getMode());
+    keepAwake(false);
     flushQueue();
   }
-  function openBoard() { hide($('setup')); show($('board')); render(); }
+  function openBoard() { hide($('setup')); show($('board')); render(); keepAwake(true); }
+
+  // Garde l'écran allumé pendant un match (téléphones/PC récents ; absent sur l'iPad 2)
+  var wakeLock = null;
+  function keepAwake(on) {
+    if (!('wakeLock' in navigator)) return;
+    if (on) {
+      if (wakeLock) return;
+      navigator.wakeLock.request('screen').then(function (l) {
+        wakeLock = l;
+        l.addEventListener('release', function () { wakeLock = null; });
+      })['catch'](function () {});
+    } else if (wakeLock) { wakeLock.release(); wakeLock = null; }
+  }
 
   function trim(s) { return String(s).replace(/^\s+|\s+$/g, ''); }
   function newId(p) { return p + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36); }
@@ -773,7 +836,8 @@ button { font-family: inherit; cursor: pointer; }
   tap($('undoBtn'), undo);
   tap($('goUndo'), undo);
   tap($('swapBtn'), function () { S.swapped = !S.swapped; save(); render(); });
-  tap($('nextBtn'), function () { if (S.finished) { queueFinished(); openSetup(); } else { nextGame(); } });
+  function onNext() { if (S.finished) { queueFinished(); openSetup(); } else { nextGame(); } }
+  tap($('nextBtn'), onNext);
   tap($('newBtn'), function () {
     if (S.finished) { queueFinished(); openSetup(); return; }
     $('cnTitle').textContent = S.renc ? 'Abandonner la partie ?' : 'Nouveau match ?';
@@ -825,10 +889,42 @@ button { font-family: inherit; cursor: pointer; }
   tap($('cnNo'), function () { hide($('confirmNew')); });
   tap($('tmoEnd'), endTimeout);
 
-  // Empêche le défilement / rebond de la page sur le tableau
+  // Empêche le défilement / rebond de la page sur le tableau (sauf dans une fenêtre qui défile).
+  // Les navigateurs récents exigent { passive: false } ; l'iPad 2 reçoit simplement false.
+  var passiveOk = false;
+  try { window.addEventListener('test', null, Object.defineProperty({}, 'passive', { get: function () { passiveOk = true; } })); } catch (e) {}
   document.addEventListener('touchmove', function (e) {
-    if ($('setup').classList.contains('hidden')) e.preventDefault();
+    if (!$('setup').classList.contains('hidden')) return;
+    for (var t = e.target; t && t !== document; t = t.parentNode) if (t.classList && t.classList.contains('card')) return;
+    e.preventDefault();
+  }, passiveOk ? { passive: false } : false);
+
+  // Clavier (PC) : ← / → point au joueur de gauche / droite, Maj+flèche pour retirer,
+  // Retour arrière ou Ctrl+Z pour annuler, Entrée / Espace pour continuer, Échap pour fermer.
+  document.addEventListener('keydown', function (e) {
+    var tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select' || !S || $('board').classList.contains('hidden')) return;
+    var c = e.keyCode, handled = true;
+    var overlay = !$('gameOver').classList.contains('hidden');
+    if (c === 27) { endTimeout(); hide($('confirmNew')); }
+    else if (!$('tmoOverlay').classList.contains('hidden') && (c === 13 || c === 32)) endTimeout();
+    else if (c === 8 || (c === 90 && (e.ctrlKey || e.metaKey))) undo();
+    else if (overlay && (c === 13 || c === 32)) onNext();
+    else if (!overlay && (c === 37 || c === 39)) {
+      var p = parseInt($(c === 37 ? 'panelL' : 'panelR').getAttribute('data-p'), 10);
+      if (e.shiftKey) removePoint(p); else addPoint(p);
+    } else handled = false;
+    if (handled) e.preventDefault();
   }, false);
+
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && !$('board').classList.contains('hidden')) keepAwake(true);
+  }, false);
+
+  // Fonctionne hors ligne sur les appareils récents (l'iPad 2 n'a pas de service worker)
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    navigator.serviceWorker.register('sw.js')['catch'](function () {});
+  }
   window.addEventListener('resize', function () { if (S) sizeFonts(); }, false);
   window.addEventListener('orientationchange', function () { setTimeout(function () { if (S) sizeFonts(); }, 300); }, false);
 

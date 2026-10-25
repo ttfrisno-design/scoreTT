@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Résultats Ping-Pong</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="format-detection" content="telephone=no">
+<style>
+/* Compatible Safari 9 (iPad 2) : pas de grid, pas de variables CSS */
+* { -webkit-box-sizing: border-box; box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: #10141c; color: #fff; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 40px; }
+h1 { margin: 0 0 16px; font-size: 28px; }
+.bar { overflow: hidden; margin-bottom: 16px; }
+.bar a, .bar button { float: left; margin: 0 8px 8px 0; padding: 12px 16px; font-size: 17px; color: #fff; background: #2a3448;
+  border: 0; border-radius: 8px; text-decoration: none; font-family: inherit; }
+.bar input { float: left; width: 260px; max-width: 100%; margin: 0 8px 8px 0; padding: 11px 12px; font-size: 17px; color: #fff;
+  background: #0f141d; border: 2px solid #33405a; border-radius: 8px; -webkit-appearance: none; }
+#status { color: #9fb0c8; font-size: 16px; margin: 6px 0 14px; }
+#status.err { color: #ff8f8c; }
+.stats { overflow: hidden; margin-bottom: 18px; }
+.stat { float: left; margin: 0 10px 10px 0; padding: 10px 14px; background: #1b2230; border-radius: 10px; font-size: 15px; color: #9fb0c8; }
+.stat b { display: block; font-size: 22px; color: #fff; }
+.match { background: #1b2230; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; }
+.top { overflow: hidden; color: #9fb0c8; font-size: 14px; margin-bottom: 8px; }
+.top .r { float: right; }
+.row { overflow: hidden; font-size: 21px; line-height: 32px; }
+.row .n { float: left; width: 55%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.row .g { float: left; width: 36px; text-align: center; font-weight: bold; border-radius: 6px; background: #10141c; }
+.row .d { float: left; padding-left: 10px; color: #cfd8e6; font-size: 17px; }
+.row.win .n { font-weight: bold; }
+.row.win .n:after { content: " \2714"; color: #6fdc9a; font-size: 17px; }
+.empty { padding: 30px; text-align: center; color: #5c6b82; font-size: 18px; }
+@media (max-width: 600px) { .row .n { width: 45%; } .row { font-size: 18px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>&#127955; Résultats des matchs</h1>
+  <div class="bar">
+    <a href="./">&#8592; Tableau de score</a>
+    <button id="reload">&#8635; Actualiser</button>
+    <input type="search" id="filter" placeholder="Filtrer par joueur…" autocomplete="off" autocorrect="off">
+  </div>
+  <div id="status">Chargement…</div>
+  <div class="stats" id="stats"></div>
+  <div id="list"></div>
+</div>
+
+<script src="config.js"></script>
+<script>
+// ES5 uniquement (Safari 9)
+(function () {
+  'use strict';
+  var all = [], n = 0;
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function status(t, err) { $('status').textContent = t; $('status').className = err ? 'err' : ''; }
+
+  function load() {
+    if (typeof SCORE_API === 'undefined' || !SCORE_API) { status('Le serveur de résultats n\'est pas encore configuré (config.js).', true); return; }
+    status('Chargement…');
+    var name = 'ttres' + (++n) + '_' + Date.now(), s = document.createElement('script'), done = false;
+    function finish(err, data) {
+      if (done) return; done = true;
+      window[name] = function () {};
+      if (s.parentNode) s.parentNode.removeChild(s);
+      if (err || !data || !data.ok) { status('Impossible de charger les résultats. Vérifiez la connexion.', true); return; }
+      all = data.matchs || [];
+      all.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
+      status(all.length + ' match' + (all.length > 1 ? 's' : '') + ' enregistré' + (all.length > 1 ? 's' : '') + '.');
+      render();
+    }
+    window[name] = function (d) { finish(null, d); };
+    s.onerror = function () { finish('reseau'); };
+    setTimeout(function () { finish('reseau'); }, 20000);
+    s.src = SCORE_API + (SCORE_API.indexOf('?') < 0 ? '?' : '&') + 'action=list&callback=' + name + '&_=' + Date.now();
+    document.body.appendChild(s);
+  }
+
+  function frDate(d) {
+    var m = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})/.exec(d || '');
+    return m ? m[3] + '/' + m[2] + '/' + m[1] + ' à ' + m[4].replace(':', 'h') : esc(d);
+  }
+
+  function render() {
+    var f = $('filter').value.toLowerCase().replace(/^\s+|\s+$/g, '');
+    var list = [], wins = {}, html = '';
+    for (var i = 0; i < all.length; i++) {
+      var m = all[i];
+      if (f && (m.joueur1 + ' ' + m.joueur2).toLowerCase().indexOf(f) < 0) continue;
+      list.push(m);
+    }
+    for (i = 0; i < list.length; i++) {
+      m = list[i];
+      var g1 = parseInt(m.manches1, 10) || 0, g2 = parseInt(m.manches2, 10) || 0;
+      var sets = (m.detail || '').split(' '), d1 = [], d2 = [];
+      for (var j = 0; j < sets.length; j++) { var p = sets[j].split('-'); if (p.length === 2) { d1.push(p[0]); d2.push(p[1]); } }
+      wins[m.vainqueur] = (wins[m.vainqueur] || 0) + 1;
+      html += '<div class="match"><div class="top"><span class="r">' + esc(m.format || '') + (m.duree_min ? ' · ' + esc(m.duree_min) + ' min' : '') +
+        '</span>' + frDate(m.date) + '</div>' +
+        '<div class="row' + (g1 > g2 ? ' win' : '') + '"><span class="n">' + esc(m.joueur1) + '</span><span class="g">' + g1 + '</span><span class="d">' + esc(d1.join('  ')) + '</span></div>' +
+        '<div class="row' + (g2 > g1 ? ' win' : '') + '"><span class="n">' + esc(m.joueur2) + '</span><span class="g">' + g2 + '</span><span class="d">' + esc(d2.join('  ')) + '</span></div></div>';
+    }
+    $('list').innerHTML = html || '<div class="empty">Aucun match' + (f ? ' pour ce joueur' : ' enregistré pour le moment') + '.</div>';
+
+    // Victoires par joueur (sur la sélection)
+    var names = [], sh = '';
+    for (var k in wins) if (wins.hasOwnProperty(k)) names.push(k);
+    names.sort(function (a, b) { return wins[b] - wins[a]; });
+    for (i = 0; i < names.length && i < 8; i++) sh += '<div class="stat"><b>' + wins[names[i]] + '</b>victoire' + (wins[names[i]] > 1 ? 's' : '') + ' · ' + esc(names[i]) + '</div>';
+    $('stats').innerHTML = sh;
+  }
+
+  $('reload').addEventListener('click', load, false);
+  $('filter').addEventListener('input', render, false);
+  load();
+})();
+</script>
+</body>
+</html>

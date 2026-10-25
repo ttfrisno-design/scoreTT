@@ -33,6 +33,11 @@ button { font-family: inherit; cursor: pointer; }
 .choice.on { background: #2f7cf6; border-color: #2f7cf6; }
 #startBtn { display: block; width: 100%; margin-top: 28px; padding: 18px; font-size: 26px; font-weight: bold;
   border: 0; border-radius: 10px; background: #1fb85b; color: #fff; }
+#online { margin-top: 26px; padding-top: 6px; border-top: 1px solid #33405a; }
+#syncStatus { margin-top: 10px; font-size: 16px; color: #9fb0c8; }
+#syncStatus.err { color: #ff8f8c; } #syncStatus.ok { color: #6fdc9a; }
+#resultsLink { display: block; margin-top: 16px; padding: 14px; text-align: center; font-size: 20px; color: #fff;
+  background: #2f7cf6; border-radius: 10px; text-decoration: none; }
 #resumeBtn { display: block; width: 100%; margin-top: 12px; padding: 14px; font-size: 20px; border: 0; border-radius: 10px;
   background: #33405a; color: #fff; }
 
@@ -115,6 +120,12 @@ button { font-family: inherit; cursor: pointer; }
     </div>
     <button id="startBtn">Commencer le match</button>
     <button id="resumeBtn" class="hidden">Reprendre le match en cours</button>
+    <div id="online">
+      <label for="cle">Code d'enregistrement en ligne</label>
+      <input type="text" id="cle" maxlength="40" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <div id="syncStatus"></div>
+      <a id="resultsLink" href="resultats.html">&#128203; Voir les résultats des matchs</a>
+    </div>
   </div>
 </div>
 
@@ -165,6 +176,7 @@ button { font-family: inherit; cursor: pointer; }
 
 <div id="toast" class="hidden"></div>
 
+<script src="config.js"></script>
 <script>
 // ES5 uniquement (Safari 9) : pas de let/const, pas de fonctions fléchées, pas de template strings.
 (function () {
@@ -307,7 +319,7 @@ button { font-family: inherit; cursor: pointer; }
       if (S.finished) {
         $('goTitle').textContent = '🏆 ' + name + ' gagne le match !';
         $('goText').textContent = 'Manches ' + S.games[S.pending] + ' – ' + S.games[1 - S.pending] + '  (dernière : ' + last[0] + '-' + last[1] + ')';
-        $('nextBtn').textContent = 'Nouveau match';
+        $('nextBtn').textContent = 'Enregistrer et nouveau match';
       } else {
         $('goTitle').textContent = 'Manche pour ' + name;
         $('goText').textContent = last[0] + ' – ' + last[1] + '   ·   Manches : ' + S.games[0] + ' – ' + S.games[1];
@@ -325,6 +337,83 @@ button { font-family: inherit; cursor: pointer; }
     t.textContent = msg; show(t);
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { hide(t); }, 2500);
+  }
+
+  // ---------- Enregistrement en ligne (file d'attente + JSONP, OK hors ligne) ----------
+  var QKEY = 'ttScore.queue', CKEY = 'ttScore.cle', jsonpN = 0, sending = false;
+
+  function getQueue() { try { return JSON.parse(localStorage.getItem(QKEY)) || []; } catch (e) { return []; } }
+  function setQueue(q) { try { localStorage.setItem(QKEY, JSON.stringify(q)); } catch (e) {} }
+  function getCle() { try { return localStorage.getItem(CKEY) || ''; } catch (e) { return ''; } }
+
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function fmtDate(t) {
+    var d = new Date(t);
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  // Met le match terminé dans la file d'envoi (une seule fois)
+  function queueFinished() {
+    if (!S || !S.finished || S.saved) return;
+    var w = S.games[0] > S.games[1] ? 0 : 1, det = [];
+    for (var i = 0; i < S.history.length; i++) det.push(S.history[i][0] + '-' + S.history[i][1]);
+    var q = getQueue();
+    q.push({ id: S.id, date: fmtDate(S.startedAt), joueur1: S.names[0], joueur2: S.names[1],
+             manches1: S.games[0], manches2: S.games[1], vainqueur: S.names[w], detail: det.join(' '),
+             format: 'en ' + S.bestOf, duree_min: Math.round((Date.now() - S.startedAt) / 60000) });
+    setQueue(q);
+    S.saved = true; save();
+    flushQueue();
+  }
+
+  function jsonp(params, cb) {
+    var name = 'ttcb' + (++jsonpN) + '_' + Date.now(), s = document.createElement('script'), done = false, timer;
+    var qs = [];
+    params.callback = name;
+    for (var k in params) if (params.hasOwnProperty(k)) qs.push(encodeURIComponent(k) + '=' + encodeURIComponent(params[k]));
+    function finish(err, data) {
+      if (done) return; done = true;
+      clearTimeout(timer);
+      window[name] = function () {};
+      if (s.parentNode) s.parentNode.removeChild(s);
+      cb(err, data);
+    }
+    window[name] = function (data) { finish(null, data); };
+    s.onerror = function () { finish('reseau'); };
+    timer = setTimeout(function () { finish('reseau'); }, 20000);
+    s.src = SCORE_API + (SCORE_API.indexOf('?') < 0 ? '?' : '&') + qs.join('&');
+    document.body.appendChild(s);
+  }
+
+  function setSync(msg, cls) { var el = $('syncStatus'); el.textContent = msg; el.className = cls || ''; }
+
+  function syncText() {
+    var n = getQueue().length;
+    if (!n) { setSync('Tous les matchs sont enregistrés en ligne.', 'ok'); return; }
+    var t = n + ' match' + (n > 1 ? 's' : '') + ' en attente d\'envoi.';
+    if (typeof SCORE_API === 'undefined' || !SCORE_API) t += ' (Adresse du serveur non configurée)';
+    else if (!getCle()) t += ' Saisissez le code d\'enregistrement.';
+    setSync(t, '');
+  }
+
+  function flushQueue() {
+    syncText();
+    if (sending || typeof SCORE_API === 'undefined' || !SCORE_API || !getCle()) return;
+    var q = getQueue();
+    if (!q.length) return;
+    sending = true;
+    setSync('Envoi des résultats…', '');
+    var rec = clone(q[0]);
+    rec.action = 'add'; rec.cle = getCle();
+    jsonp(rec, function (err, data) {
+      sending = false;
+      if (err) { syncText(); setSync($('syncStatus').textContent + ' Pas de connexion, nouvel essai plus tard.', 'err'); return; }
+      if (!data || !data.ok) { setSync('Erreur : ' + ((data && data.erreur) || 'inconnue'), 'err'); return; }
+      var q2 = getQueue();
+      if (q2.length && q2[0].id === q[0].id) q2.shift();
+      setQueue(q2);
+      if (q2.length) flushQueue(); else { syncText(); toast('Résultat enregistré en ligne ✓'); }
+    });
   }
 
   // ---------- Temps mort ----------
@@ -363,6 +452,7 @@ button { font-family: inherit; cursor: pointer; }
     hide($('board')); hide($('gameOver')); hide($('confirmNew'));
     if (S && !S.finished) show($('resumeBtn')); else hide($('resumeBtn'));
     show($('setup'));
+    flushQueue();
   }
   function openBoard() { hide($('setup')); show($('board')); render(); }
 
@@ -370,7 +460,8 @@ button { font-family: inherit; cursor: pointer; }
     var n0 = $('n0').value.replace(/^\s+|\s+$/g, '') || 'Joueur 1';
     var n1 = $('n1').value.replace(/^\s+|\s+$/g, '') || 'Joueur 2';
     if (document.activeElement) document.activeElement.blur();
-    S = { names: [n0, n1], bestOf: choiceVal('bestOf'), firstServer: choiceVal('firstServ'),
+    S = { id: Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36), startedAt: Date.now(), saved: false,
+          names: [n0, n1], bestOf: choiceVal('bestOf'), firstServer: choiceVal('firstServ'),
           points: [0, 0], games: [0, 0], gameIndex: 0, history: [], pending: null, finished: false,
           swapped: false, decSwapped: false, timeouts: [false, false] };
     undoStack = [];
@@ -403,8 +494,14 @@ button { font-family: inherit; cursor: pointer; }
   tap($('undoBtn'), undo);
   tap($('goUndo'), undo);
   tap($('swapBtn'), function () { S.swapped = !S.swapped; save(); render(); });
-  tap($('nextBtn'), function () { if (S.finished) { openSetup(); } else { nextGame(); } });
-  tap($('newBtn'), function () { if (S.finished) openSetup(); else show($('confirmNew')); });
+  tap($('nextBtn'), function () { if (S.finished) { queueFinished(); openSetup(); } else { nextGame(); } });
+  tap($('newBtn'), function () { if (S.finished) { queueFinished(); openSetup(); } else show($('confirmNew')); });
+  $('cle').addEventListener('change', function () {
+    try { localStorage.setItem(CKEY, $('cle').value.replace(/^\s+|\s+$/g, '')); } catch (e) {}
+    flushQueue();
+  }, false);
+  $('cle').value = getCle();
+  window.addEventListener('online', flushQueue, false);
   tap($('cnYes'), function () {
     hide($('confirmNew'));
     if (S) { $('n0').value = S.names[0]; $('n1').value = S.names[1]; updateServerLabels(); }
@@ -423,7 +520,8 @@ button { font-family: inherit; cursor: pointer; }
 
   if (load()) {
     $('n0').value = S.names[0]; $('n1').value = S.names[1]; updateServerLabels();
-    if (S.finished) openSetup(); else openBoard();
+    if (!S.id) { S.id = 'm' + Date.now().toString(36); S.startedAt = Date.now(); }
+    if (S.finished) { queueFinished(); openSetup(); } else openBoard();
   } else {
     openSetup();
   }

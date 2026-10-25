@@ -16,6 +16,10 @@ Site : https://ttfrisno-design.github.io/scoreTT/
 - **PC** : souris, ou clavier : ← / → point au joueur de gauche / droite, Maj + flèche pour retirer un point,
   Retour arrière ou Ctrl+Z pour annuler, Entrée pour continuer, Échap pour fermer une fenêtre.
 
+Le tableau de score passe en **plein écran** dès qu'un match s'affiche (Android, PC, iPad récents) ;
+le bouton ⛶ en haut permet d'en sortir ou d'y revenir. Sur iPhone et iPad 2, le plein écran
+s'obtient en ouvrant le site depuis l'icône ajoutée à l'écran d'accueil.
+
 ## Rencontre par équipes (4 contre 4)
 
 Onglet « Rencontre par équipes » : saisir la journée, les deux clubs et les joueurs A B C D / W X Y Z.

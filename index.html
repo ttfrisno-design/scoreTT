@@ -273,6 +273,7 @@ html, body { overscroll-behavior: none; }
     <button id="undoBtn">&#8630; Annuler</button>
     <button id="swapBtn">&#8644; Côtés</button>
     <button id="newBtn" class="red">Nouveau match</button>
+    <button id="fsBtn" class="hidden" title="Plein écran">&#x26F6;</button>
     <span id="matchInfo"></span>
   </div>
   <div id="panels">
@@ -656,9 +657,43 @@ html, body { overscroll-behavior: none; }
     show($('setup'));
     setMode(getMode());
     keepAwake(false);
+    fsWanted = false; exitFs();
     flushQueue();
   }
-  function openBoard() { hide($('setup')); show($('board')); render(); keepAwake(true); if (!S.finished) sendLive(); }
+  function openBoard() {
+    hide($('setup')); show($('board')); render(); keepAwake(true);
+    fsWanted = true; enterFs();
+    if (!S.finished) sendLive();
+  }
+
+  // ---------- Plein écran pendant l'affichage du score ----------
+  // Android, PC et iPad récents. Sur iPhone et iPad 2, le plein écran passe par
+  // « Sur l'écran d'accueil » (balise apple-mobile-web-app-capable).
+  // Le navigateur n'accepte la demande que pendant un geste (touchend / clic) : si elle
+  // échoue (ouverture au toucher, rechargement), le prochain toucher du tableau la refait.
+  var fsWanted = false;
+  function fsEl() { return document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement || null; }
+  function fsSupported() {
+    var d = document.documentElement;
+    return !!(d.requestFullscreen || d.webkitRequestFullscreen || d.msRequestFullscreen);
+  }
+  function enterFs() {
+    if (!fsSupported() || fsEl()) return;
+    var d = document.documentElement, p = null;
+    try {
+      if (d.requestFullscreen) p = d.requestFullscreen({ navigationUI: 'hide' });
+      else if (d.webkitRequestFullscreen) d.webkitRequestFullscreen();
+      else d.msRequestFullscreen();
+    } catch (e) {}
+    if (p && p['catch']) p['catch'](function () {});
+  }
+  function exitFs() {
+    if (!fsEl()) return;
+    var x = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen, p = null;
+    try { p = x.call(document); } catch (e) {}
+    if (p && p['catch']) p['catch'](function () {});
+  }
+  function retryFs() { if (fsWanted && !fsEl() && !$('board').classList.contains('hidden')) enterFs(); }
 
   // Garde l'écran allumé pendant un match (téléphones/PC récents ; absent sur l'iPad 2)
   var wakeLock = null;
@@ -907,6 +942,23 @@ html, body { overscroll-behavior: none; }
     teamEditing = false; fillTeamForm(null); renderTeam();
   });
   tap($('pvGo'), startPartie);
+
+  // Plein écran : nouvel essai à la fin du toucher qui a ouvert le tableau, et à chaque toucher du tableau
+  [$('startBtn'), $('resumeBtn'), $('pvGo'), $('board')].forEach(function (el) {
+    el.addEventListener('touchend', retryFs, false);
+  });
+  $('board').addEventListener('click', retryFs, false);
+  if (fsSupported()) show($('fsBtn'));
+  tap($('fsBtn'), function () {
+    if (fsEl()) { fsWanted = false; exitFs(); } else { fsWanted = true; enterFs(); }
+  });
+  function onFsChange() {
+    $('fsBtn').innerHTML = fsEl() ? '&#x2715;' : '&#x26F6;';
+    $('fsBtn').title = fsEl() ? 'Quitter le plein écran' : 'Plein écran';
+    setTimeout(function () { if (S) sizeFonts(); }, 200);
+  }
+  document.addEventListener('fullscreenchange', onFsChange, false);
+  document.addEventListener('webkitfullscreenchange', onFsChange, false);
   tap($('pvCancel'), function () { hide($('partieOv')); });
   fillTeamForm(loadRenc());
   window.addEventListener('online', function () { flushQueue(); if (S && !S.finished) sendLive(); }, false);

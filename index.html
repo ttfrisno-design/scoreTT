@@ -141,6 +141,13 @@ button { font-family: inherit; cursor: pointer; }
 .overlay button { display: block; width: 100%; padding: 16px; margin-top: 10px; font-size: 22px; border: 0; border-radius: 10px; background: #2a3448; color: #fff; }
 .overlay button.go { background: #1fb85b; font-weight: bold; }
 #tmoCount { font-size: 120px; font-weight: bold; margin: 10px 0 20px; }
+.bigcode { font-size: 80px; font-weight: bold; letter-spacing: 0.15em; margin: 0 0 8px; color: #f5c400; }
+#rcCodeIn { width: 100%; padding: 10px; font-size: 48px; text-align: center; letter-spacing: 0.3em; color: #fff; background: #0f141d;
+  border: 2px solid #33405a; border-radius: 10px; -webkit-appearance: none; -webkit-user-select: text; user-select: text; }
+.rcErr { color: #ff8f8c !important; margin: 10px 0 0 !important; font-size: 17px !important; }
+#rcSetupBtn { display: block; width: 100%; margin-top: 12px; padding: 14px; font-size: 19px; border: 0; border-radius: 10px;
+  background: #33405a; color: #fff; }
+#rcBtn.on { background: #1f7a45; }
 #toast { position: absolute; top: 90px; left: 50%; width: 420px; margin-left: -210px; padding: 16px; z-index: 20; border-radius: 12px;
   background: #f5c400; color: #000; font-size: 26px; font-weight: bold; text-align: center; }
 @media (max-width: 600px) { .overlay .card { width: 92%; margin-left: -46%; } #toast { width: 92%; margin-left: -46%; } }
@@ -270,6 +277,7 @@ html, body { overscroll-behavior: none; }
     <div id="online">
       <div id="syncStatus"></div>
       <a id="resultsLink" href="resultats.html">&#128203; Résultats et matchs en direct</a>
+      <button id="rcSetupBtn">&#128241; Télécommande (tablette + téléphone)</button>
     </div>
   </div>
 </div>
@@ -280,6 +288,7 @@ html, body { overscroll-behavior: none; }
     <button id="undoBtn">&#8630; Annuler</button>
     <button id="swapBtn">&#8644; Côtés</button>
     <button id="newBtn" class="red">Nouveau match</button>
+    <button id="rcBtn" title="Télécommande">&#128241;</button>
     <button id="fsBtn" class="hidden" title="Plein écran">&#x26F6;</button>
     <span id="matchInfo"></span>
   </div>
@@ -342,6 +351,32 @@ html, body { overscroll-behavior: none; }
   <button id="cnNo">Non, continuer</button>
 </div></div>
 
+<div id="rcOv" class="overlay hidden"><div class="card">
+  <h2>&#128241; Télécommande</h2>
+  <div id="rcChoose">
+    <p>Un téléphone peut commander à distance le score affiché sur cette tablette (par Internet : Wi-Fi ou 4G).</p>
+    <button class="go" id="rcAsTab">Cet appareil affiche le score : obtenir un code</button>
+    <button id="rcAsTel">Cet appareil est la télécommande : entrer un code</button>
+  </div>
+  <div id="rcTab" class="hidden">
+    <p>Sur le téléphone, choisissez « télécommande » et entrez ce code :</p>
+    <div class="bigcode" id="rcCode"></div>
+    <p id="rcTabStatus"></p>
+    <button id="rcStopTab">Arrêter la télécommande</button>
+  </div>
+  <div id="rcTel" class="hidden">
+    <p>Entrez le code affiché sur la tablette :</p>
+    <input id="rcCodeIn" type="tel" maxlength="4" autocomplete="off" pattern="[0-9]*">
+    <p id="rcTelErr" class="rcErr"></p>
+    <button class="go" id="rcJoinBtn">Connecter</button>
+  </div>
+  <div id="rcTelOn" class="hidden">
+    <p id="rcTelStatus"></p>
+    <button id="rcStopTel">Déconnecter la télécommande</button>
+  </div>
+  <button id="rcClose">Fermer</button>
+</div></div>
+
 <div id="toast" class="hidden"></div>
 
 <script src="config.js"></script>
@@ -353,6 +388,8 @@ html, body { overscroll-behavior: none; }
   var S = null;          // état du match
   var undoStack = [];
   var tmoTimer = null, toastTimer = null;
+  // Télécommande : role '' (aucune), 'tab' (affiche le score), 'tel' (commande à distance)
+  var RC = { role: '', code: '', since: -1, v: 0, tel: 0, gen: 0, pubBusy: false, pubDirty: false, flip: false, etat: null };
 
   function $(id) { return document.getElementById(id); }
   function q(el, sel) { return el.querySelector(sel); }
@@ -368,8 +405,10 @@ html, body { overscroll-behavior: none; }
   }
 
   function save() {
+    if (RC.role === 'tel') return; // la télécommande n'a pas de match à elle
     try { localStorage.setItem(KEY, JSON.stringify({ s: S, u: undoStack.slice(-200) })); } catch (e) {}
     if (S) sendLive();
+    rcPublish();
   }
   function load() {
     try { var d = JSON.parse(localStorage.getItem(KEY)); if (d && d.s) { S = d.s; undoStack = d.u || []; return true; } } catch (e) {}
@@ -396,6 +435,7 @@ html, body { overscroll-behavior: none; }
   function pushUndo() { undoStack.push(clone(S)); if (undoStack.length > 300) undoStack.shift(); }
 
   function addPoint(p) {
+    if (RC.role === 'tel') { rcSend('pt:' + p); return; }
     if (S.pending !== null || S.finished) return;
     pushUndo();
     S.points[p]++;
@@ -414,6 +454,7 @@ html, body { overscroll-behavior: none; }
   }
 
   function removePoint(p) {
+    if (RC.role === 'tel') { rcSend('mn:' + p); return; }
     if (S.pending !== null || S.points[p] <= 0) return;
     pushUndo();
     S.points[p]--;
@@ -421,6 +462,7 @@ html, body { overscroll-behavior: none; }
   }
 
   function undo() {
+    if (RC.role === 'tel') { rcSend('undo'); return; }
     if (!undoStack.length) { toast('Rien à annuler'); return; }
     S = undoStack.pop();
     save(); render();
@@ -629,7 +671,7 @@ html, body { overscroll-behavior: none; }
   }
 
   function sendLive() {
-    if (!S || !apiOk()) return;
+    if (!S || !apiOk() || RC.role === 'tel') return;
     if (liveBusy) { liveDirty = true; return; }
     liveBusy = true; liveDirty = false;
     jsonp({ action: 'live', id: S.id, etat: JSON.stringify(livePayload()) }, function () {
@@ -640,8 +682,170 @@ html, body { overscroll-behavior: none; }
 
   function stopLive(id) { if (id && apiOk()) jsonp({ action: 'stop', id: id }, function () {}); }
 
+  // ---------- Télécommande (tablette + téléphone appairés par un code à 4 chiffres) ----------
+  // Pas de Bluetooth possible depuis une page web (iPad 2, iPhone) : les deux appareils passent par
+  // le script Google. Le téléphone envoie des commandes, la tablette les applique et renvoie l'état.
+  var RCKEY = 'ttScore.rc';
+
+  function rcSave() { try { localStorage.setItem(RCKEY, JSON.stringify({ role: RC.role, code: RC.code })); } catch (e) {} }
+  function rcRestore() {
+    try { var d = JSON.parse(localStorage.getItem(RCKEY)); if (d && d.role && d.code) { RC.role = d.role; RC.code = d.code; } } catch (e) {}
+  }
+
+  function rcPayload() {
+    return S && !$('board').classList.contains('hidden') ? { s: S } : { idle: 1 };
+  }
+
+  // Tablette : envoie l'état du match (un envoi à la fois, le dernier état gagne)
+  function rcPublish() {
+    if (RC.role !== 'tab' || !apiOk()) return;
+    if (RC.pubBusy) { RC.pubDirty = true; return; }
+    RC.pubBusy = true; RC.pubDirty = false;
+    jsonp({ action: 'rc_state', code: RC.code, v: Date.now(), etat: JSON.stringify(rcPayload()) }, function (err, d) {
+      RC.pubBusy = false;
+      if (d && d.perdu) { rcLost(); return; }
+      if (RC.pubDirty || err) setTimeout(rcPublish, err ? 3000 : 200);
+    });
+  }
+
+  // Boucle d'attente : la tablette attend les commandes, le téléphone attend l'état
+  function rcLoop() {
+    var gen = ++RC.gen;
+    (function next() {
+      if (gen !== RC.gen || !RC.role || !apiOk()) return;
+      var t0 = Date.now();
+      var params = RC.role === 'tab'
+        ? { action: 'rc_wait', code: RC.code, type: 'c', since: RC.since }
+        : { action: 'rc_wait', code: RC.code, type: 's', since: RC.v };
+      jsonp(params, function (err, d) {
+        if (gen !== RC.gen) return;
+        if (err || !d) { setTimeout(next, 3000); return; }
+        if (d.perdu) { rcLost(); return; }
+        var vide = true;
+        if (RC.role === 'tab') {
+          if (RC.since < 0) RC.since = d.last || 0;
+          else for (var i = 0; i < (d.cmds || []).length; i++) { RC.since = d.cmds[i].seq; rcApply(d.cmds[i].cmd); vide = false; }
+          if (d.tel && d.tel !== RC.tel) { RC.tel = d.tel; toast('Télécommande connectée ✓'); rcShow(); rcPublish(); }
+        } else if (!d.rien) {
+          RC.v = d.v; vide = false;
+          try { RC.etat = JSON.parse(d.etat); } catch (e) { RC.etat = null; }
+          rcRenderTel();
+        }
+        // Réponse vide et rapide (serveur sans attente) : on patiente un peu avant de redemander
+        setTimeout(next, vide && Date.now() - t0 < 1000 ? 1000 : 0);
+      });
+    })();
+  }
+
+  // Tablette : applique une commande reçue du téléphone
+  function rcApply(cmd) {
+    if (!S || $('board').classList.contains('hidden')) return;
+    var m = cmd.split(':'), p = m.length > 1 ? parseInt(m[1], 10) : -1;
+    if (m[0] === 'pt') addPoint(p);
+    else if (m[0] === 'mn') removePoint(p);
+    else if (m[0] === 'undo') undo();
+    else if (m[0] === 'next') { if (S.pending !== null) onNext(); }
+    else if (m[0] === 'tmo') startTimeout(p);
+  }
+
+  // Téléphone : envoie une commande ; le point s'affiche tout de suite, la tablette confirme ensuite
+  function rcSend(cmd) {
+    if (!S) return;
+    var m = cmd.split(':'), p = parseInt(m[1], 10);
+    if (S.pending === null && !S.finished) {
+      if (m[0] === 'pt') { S.points[p]++; render(); }
+      else if (m[0] === 'mn' && S.points[p] > 0) { S.points[p]--; render(); }
+    }
+    jsonp({ action: 'rc_cmd', code: RC.code, cmd: cmd }, function (err, d) {
+      if (err) toast('Commande non transmise : vérifiez la connexion');
+      else if (d && d.perdu) rcLost();
+    });
+  }
+
+  // Téléphone : affiche l'état reçu, côtés inversés (téléphone et tablette dos à dos)
+  function rcRenderTel() {
+    if (RC.role !== 'tel') return;
+    var e = RC.etat;
+    if (!e || !e.s) {
+      S = null;
+      hide($('board')); hide($('gameOver')); show($('setup'));
+      keepAwake(false); rcOpen();
+      return;
+    }
+    S = clone(e.s);
+    S.swapped = RC.flip ? !!e.s.swapped : !e.s.swapped;
+    if ($('board').classList.contains('hidden')) {
+      hide($('setup')); hide($('rcOv')); show($('board'));
+      keepAwake(true); fsWanted = true; enterFs();
+    }
+    render();
+    rcShow();
+  }
+
+  function rcStartTab() {
+    $('rcTabStatus').textContent = 'Création du code…';
+    jsonp({ action: 'rc_new' }, function (err, d) {
+      if (err || !d || !d.ok) { toast(d && d.erreur ? d.erreur : 'Pas de connexion : impossible de créer un code'); rcShow(); return; }
+      RC.role = 'tab'; RC.code = d.code; RC.since = -1; RC.tel = 0;
+      rcSave(); rcShow(); rcPublish(); rcLoop();
+    });
+  }
+
+  function rcJoin() {
+    var code = $('rcCodeIn').value.replace(/\D/g, '');
+    if (code.length !== 4) { $('rcTelErr').textContent = 'Le code a 4 chiffres.'; return; }
+    $('rcCodeIn').blur();
+    $('rcTelErr').textContent = 'Connexion…';
+    jsonp({ action: 'rc_join', code: code }, function (err, d) {
+      if (err || !d) { $('rcTelErr').textContent = 'Pas de connexion.'; return; }
+      if (!d.ok) { $('rcTelErr').textContent = d.erreur || 'Code refusé.'; return; }
+      $('rcTelErr').textContent = '';
+      RC.role = 'tel'; RC.code = code; RC.v = 0; RC.etat = null; RC.flip = false;
+      rcSave(); rcShow(); rcLoop();
+      toast('Connecté à la tablette ✓');
+    });
+  }
+
+  // Fin de l'appairage (demandée, ou code expiré côté serveur)
+  function rcEnd(silent) {
+    var wasTel = RC.role === 'tel';
+    if (RC.code && apiOk()) jsonp({ action: 'rc_end', code: RC.code }, function () {});
+    RC.role = ''; RC.code = ''; RC.gen++; RC.etat = null; RC.tel = 0;
+    rcSave();
+    if (!silent) toast('Télécommande arrêtée');
+    if (wasTel) {
+      // le téléphone retrouve son propre match éventuel
+      S = null; undoStack = [];
+      load();
+      openSetup();
+    }
+    rcShow();
+  }
+  function rcLost() { rcEnd(true); toast('Appairage terminé ou expiré'); }
+
+  function rcSection(id) {
+    ['rcChoose', 'rcTab', 'rcTel', 'rcTelOn'].forEach(function (s) { $(s).className = s === id ? '' : 'hidden'; });
+  }
+
+  function rcShow(choix) {
+    $('rcBtn').className = RC.role ? 'on' : '';
+    $('newBtn').textContent = RC.role === 'tel' ? 'Télécommande' : 'Nouveau match';
+    if (choix === 'tel') { rcSection('rcTel'); return; }
+    if (RC.role === 'tab') {
+      rcSection('rcTab');
+      $('rcCode').textContent = RC.code;
+      $('rcTabStatus').textContent = RC.tel ? 'Téléphone connecté ✓' : 'En attente du téléphone…';
+    } else if (RC.role === 'tel') {
+      rcSection('rcTelOn');
+      $('rcTelStatus').textContent = 'Connecté à la tablette (code ' + RC.code + ').' +
+        (RC.etat && RC.etat.s ? '' : ' En attente d\'un match sur la tablette…');
+    } else rcSection('rcChoose');
+  }
+  function rcOpen() { rcShow(); show($('rcOv')); }
+
   // ---------- Temps mort ----------
   function startTimeout(p) {
+    if (RC.role === 'tel') { if (!S.timeouts[p]) { rcSend('tmo:' + p); toast('Temps mort demandé à la tablette'); } return; }
     if (S.timeouts[p] || S.pending !== null) return;
     pushUndo();
     S.timeouts[p] = true; save(); render();
@@ -684,12 +888,14 @@ html, body { overscroll-behavior: none; }
     setMode(getMode());
     keepAwake(false);
     fsWanted = false; exitFs();
+    rcPublish();
     flushQueue();
   }
   function openBoard() {
     hide($('setup')); show($('board')); render(); keepAwake(true);
     fsWanted = true; enterFs();
     if (!S.finished) sendLive();
+    rcPublish();
   }
 
   // ---------- Plein écran pendant l'affichage du score ----------
@@ -931,10 +1137,17 @@ html, body { overscroll-behavior: none; }
 
   tap($('undoBtn'), undo);
   tap($('goUndo'), undo);
-  tap($('swapBtn'), function () { S.swapped = !S.swapped; save(); render(); });
-  function onNext() { if (S.finished) { queueFinished(); openSetup(); } else { nextGame(); } }
+  tap($('swapBtn'), function () {
+    if (RC.role === 'tel') { RC.flip = !RC.flip; rcRenderTel(); return; } // n'inverse que l'affichage du téléphone
+    S.swapped = !S.swapped; save(); render();
+  });
+  function onNext() {
+    if (RC.role === 'tel') { rcSend('next'); return; }
+    if (S.finished) { queueFinished(); openSetup(); } else { nextGame(); }
+  }
   tap($('nextBtn'), onNext);
   tap($('newBtn'), function () {
+    if (RC.role === 'tel') { rcOpen(); return; }
     if (S.finished) { queueFinished(); openSetup(); return; }
     $('cnTitle').textContent = S.renc ? 'Abandonner la partie ?' : 'Nouveau match ?';
     $('cnText').textContent = S.renc ? 'Le score de cette partie sera effacé (rien n\'est enregistré).' : 'Le match en cours sera effacé.';
@@ -1037,13 +1250,29 @@ html, body { overscroll-behavior: none; }
   window.addEventListener('resize', function () { if (S) sizeFonts(); }, false);
   window.addEventListener('orientationchange', function () { setTimeout(function () { if (S) sizeFonts(); }, 300); }, false);
 
-  if (load()) {
+  // Télécommande
+  tap($('rcBtn'), rcOpen);
+  tap($('rcSetupBtn'), rcOpen);
+  tap($('rcAsTab'), rcStartTab);
+  tap($('rcAsTel'), function () { $('rcCodeIn').value = ''; $('rcTelErr').textContent = ''; rcShow('tel'); });
+  tap($('rcJoinBtn'), rcJoin);
+  $('rcCodeIn').addEventListener('keydown', function (e) { if (e.keyCode === 13) { e.preventDefault(); rcJoin(); } }, false);
+  tap($('rcStopTab'), function () { rcEnd(false); });
+  tap($('rcStopTel'), function () { hide($('rcOv')); rcEnd(false); });
+  tap($('rcClose'), function () { hide($('rcOv')); });
+
+  rcRestore();
+  if (RC.role === 'tel') {
+    // Téléphone télécommande : on attend l'état de la tablette (son propre match reste de côté)
+    openSetup(); rcOpen(); rcLoop();
+  } else if (load()) {
     if (!S.renc) { $('n0').value = S.names[0]; $('n1').value = S.names[1]; updateServerLabels(); }
     if (!S.id) { S.id = 'm' + Date.now().toString(36); S.startedAt = Date.now(); }
     if (S.finished) { queueFinished(); openSetup(); } else openBoard();
   } else {
     openSetup();
   }
+  if (RC.role === 'tab') { rcShow(); rcLoop(); rcPublish(); }
 })();
 </script>
 </body>

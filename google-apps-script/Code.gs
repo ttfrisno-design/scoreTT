@@ -61,6 +61,8 @@ function doGet(e) {
     if (String(p.code || '') !== CODE_CONSULTATION) {
       return reponse_(e, { ok: false, code: true, erreur: 'Code de consultation incorrect' });
     }
+    if (p.action === 'del') return reponse_(e, supprimer_(p));
+    purger_();
     return reponse_(e, { ok: true, matchs: lister_(), direct: direct_(), maintenant: Date.now() });
   } catch (err) {
     return reponse_(e, { ok: false, erreur: String(err) });
@@ -105,6 +107,47 @@ function lister_() {
     for (var i = 0; i < COLONNES.length; i++) o[COLONNES[i]] = r[i];
     return o;
   });
+}
+
+// ---------- Suppression ----------
+var CONSERVATION_JOURS = 3;   // les matchs sont supprimés automatiquement au bout de 3 jours
+
+// Supprime les lignes pour lesquelles test(match) est vrai ; renvoie le nombre supprimé
+function supprimerSi_(test) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var sh = feuille_(), n = sh.getLastRow(), nb = 0;
+    if (n < 2) return 0;
+    var vals = sh.getRange(2, 1, n - 1, COLONNES.length).getDisplayValues();
+    for (var i = vals.length - 1; i >= 0; i--) {   // du bas vers le haut : les numéros de ligne restent justes
+      var o = {};
+      for (var k = 0; k < COLONNES.length; k++) o[COLONNES[k]] = vals[i][k];
+      if (test(o)) { sh.deleteRow(i + 2); nb++; }
+    }
+    return nb;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Bouton « Supprimer » de la page des résultats : un match (id) ou toute une rencontre (rencontre)
+function supprimer_(p) {
+  if (!p.id && !p.rencontre) return { ok: false, erreur: 'rien à supprimer' };
+  var nb = supprimerSi_(function (o) {
+    return p.id ? o.id === String(p.id) : o.rencontre_id === String(p.rencontre);
+  });
+  return { ok: true, supprimes: nb };
+}
+
+// Purge automatique (au plus une fois par heure, lors d'une consultation)
+function purger_() {
+  var props = PropertiesService.getScriptProperties();
+  if (Date.now() - Number(props.getProperty('purge_t') || 0) < 3600 * 1000) return;
+  props.setProperty('purge_t', String(Date.now()));
+  var limite = Utilities.formatDate(new Date(Date.now() - CONSERVATION_JOURS * 24 * 3600 * 1000),
+                                    Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
+  supprimerSi_(function (o) { return o.date && o.date < limite; });
 }
 
 // ---------- Score en direct (stocké dans les propriétés du script) ----------

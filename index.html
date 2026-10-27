@@ -693,7 +693,9 @@ html, body { overscroll-behavior: none; }
   }
 
   function rcPayload() {
-    return S && !$('board').classList.contains('hidden') ? { s: S } : { idle: 1 };
+    if (!S || $('board').classList.contains('hidden')) return { idle: 1 };
+    var left = tmoEnd ? Math.ceil((tmoEnd - Date.now()) / 1000) : 0;
+    return { s: S, tmo: left > 0 ? { p: tmoWho, left: left } : null };
   }
 
   // Tablette : envoie l'état du match (un envoi à la fois, le dernier état gagne)
@@ -746,6 +748,7 @@ html, body { overscroll-behavior: none; }
     else if (m[0] === 'undo') undo();
     else if (m[0] === 'next') { if (S.pending !== null) onNext(); }
     else if (m[0] === 'tmo') startTimeout(p);
+    else if (m[0] === 'tmoend') endTimeout();
   }
 
   // Téléphone : envoie une commande ; le point s'affiche tout de suite, la tablette confirme ensuite
@@ -767,7 +770,7 @@ html, body { overscroll-behavior: none; }
     if (RC.role !== 'tel') return;
     var e = RC.etat;
     if (!e || !e.s) {
-      S = null;
+      S = null; tmoEnd = 0; hideTmo();
       hide($('board')); hide($('gameOver')); show($('setup'));
       keepAwake(false); rcOpen();
       return;
@@ -780,6 +783,11 @@ html, body { overscroll-behavior: none; }
     }
     render();
     rcShow();
+    // Temps mort en cours sur la tablette : même décompte sur le téléphone
+    if (e.tmo && e.tmo.left > 0) {
+      var fin = Date.now() + e.tmo.left * 1000;
+      if (!tmoEnd || Math.abs(fin - tmoEnd) > 2000) { tmoEnd = fin; tmoWho = e.tmo.p; showTmo(); }
+    } else if (tmoEnd) { tmoEnd = 0; tmoWho = -1; hideTmo(); }
   }
 
   function rcStartTab() {
@@ -848,18 +856,31 @@ html, body { overscroll-behavior: none; }
     if (RC.role === 'tel') { if (!S.timeouts[p]) { rcSend('tmo:' + p); toast('Temps mort demandé à la tablette'); } return; }
     if (S.timeouts[p] || S.pending !== null) return;
     pushUndo();
+    tmoEnd = Date.now() + 60000; tmoWho = p;   // avant save() : l'état envoyé au téléphone contient le décompte
     S.timeouts[p] = true; save(); render();
-    var left = 60;
-    $('tmoTitle').textContent = 'Temps mort – ' + S.names[p];
-    $('tmoCount').textContent = left;
-    show($('tmoOverlay'));
-    clearInterval(tmoTimer);
-    tmoTimer = setInterval(function () {
-      left--; $('tmoCount').textContent = left;
-      if (left <= 0) endTimeout();
-    }, 1000);
+    showTmo();
   }
-  function endTimeout() { clearInterval(tmoTimer); hide($('tmoOverlay')); }
+
+  // Décompte calculé d'après l'heure de fin (identique sur la tablette et le téléphone)
+  var tmoEnd = 0, tmoWho = -1;
+  function showTmo() {
+    $('tmoTitle').textContent = 'Temps mort – ' + (S && tmoWho >= 0 ? S.names[tmoWho] : '');
+    function tick() {
+      var left = Math.max(0, Math.ceil((tmoEnd - Date.now()) / 1000));
+      $('tmoCount').textContent = left;
+      if (left <= 0) endTimeout();
+    }
+    clearInterval(tmoTimer);
+    tick();
+    if (tmoEnd) { show($('tmoOverlay')); tmoTimer = setInterval(tick, 250); }
+  }
+  function hideTmo() { clearInterval(tmoTimer); hide($('tmoOverlay')); }
+  function endTimeout() {
+    hideTmo();
+    var etait = tmoEnd;
+    tmoEnd = 0; tmoWho = -1;
+    if (etait && RC.role === 'tab') rcPublish(); // le téléphone ferme aussi son décompte
+  }
 
   // ---------- Écran de configuration ----------
   function choiceGroup(id) {
@@ -1209,7 +1230,10 @@ html, body { overscroll-behavior: none; }
     openSetup();
   });
   tap($('cnNo'), function () { hide($('confirmNew')); });
-  tap($('tmoEnd'), endTimeout);
+  tap($('tmoEnd'), function () {
+    if (RC.role === 'tel') rcSend('tmoend'); // « Reprendre le jeu » sur le téléphone ferme aussi la tablette
+    endTimeout();
+  });
 
   // Empêche le défilement / rebond de la page sur le tableau (sauf dans une fenêtre qui défile).
   // Les navigateurs récents exigent { passive: false } ; l'iPad 2 reçoit simplement false.

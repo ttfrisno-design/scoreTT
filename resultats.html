@@ -50,6 +50,11 @@ h2 { margin: 6px 0 14px; font-size: 22px; color: #cfd8e6; font-weight: normal; }
 .row.win .n { font-weight: bold; }
 .row.win .n:after { content: " \2714"; color: #6fdc9a; font-size: 17px; }
 .empty { padding: 30px; text-align: center; color: #5c6b82; font-size: 18px; }
+.del { float: right; margin: -2px 0 0 10px; padding: 3px 9px; font-size: 14px; border: 0; border-radius: 6px;
+  background: #3a2228; color: #ff8f8c; font-family: inherit; cursor: pointer; }
+.delR { display: inline-block; margin-top: 12px; padding: 8px 14px; font-size: 15px; border: 0; border-radius: 8px;
+  background: #3a2228; color: #ff8f8c; font-family: inherit; cursor: pointer; }
+.note { color: #5c6b82; font-size: 14px; margin-top: 18px; }
 
 .bilan { overflow: hidden; margin-top: 22px; }
 .bilan .col { float: left; width: 48%; } .bilan .col + .col { margin-left: 4%; }
@@ -263,7 +268,8 @@ table.st { width: 100%; border-collapse: separate; border-spacing: 4px; margin: 
       h += '<a class="item" href="#j=' + encodeURIComponent(keys[i]) + '"><span class="go">›</span>' + frDay(keys[i]) +
         '<span class="sub">' + sub.join(' · ') + '</span></a>';
     }
-    $('view').innerHTML = keys.length ? h : '<div class="empty">Aucun résultat enregistré pour le moment.</div>';
+    $('view').innerHTML = (keys.length ? h : '<div class="empty">Aucun résultat enregistré pour le moment.</div>') +
+      '<p class="note">Les résultats sont effacés automatiquement 3 jours après le match.</p>';
   }
 
   // 2) Rencontres d'une journée
@@ -322,7 +328,8 @@ table.st { width: 100%; border-collapse: separate; border-spacing: 4px; margin: 
   function matchCard(m, label) {
     var raw = String(m.detail || '').split(' '), sets = [];
     for (var j = 0; j < raw.length; j++) { var p = raw[j].split('-'); if (p.length === 2) sets.push(p); }
-    return '<div class="match"><div class="top"><span class="r">' + esc(m.format || '') + (m.duree_min ? ' · ' + esc(m.duree_min) + ' min' : '') +
+    return '<div class="match"><div class="top"><button class="del" data-id="' + esc(m.id) + '" title="Supprimer ce match">&#128465; Supprimer</button>' +
+      '<span class="r">' + esc(m.format || '') + (m.duree_min ? ' · ' + esc(m.duree_min) + ' min' : '') +
       '</span>' + (label ? '<span class="lbl">' + label + '</span>' : '') + hour(m.date) +
       (m.arbitre ? ' · Arbitre : ' + esc(m.arbitre) : '') + '</div>' +
       scoreTable([m.joueur1, m.joueur2], [m.manches1, m.manches2], sets, null, -1) + '</div>';
@@ -363,7 +370,8 @@ table.st { width: 100%; border-collapse: separate; border-spacing: 4px; margin: 
     }
     var f = list[0];
     var h = '<div class="teamHead"><div class="sc"><span class="c1">' + esc(f.club1) + '</span><b>' + s1 + '</b>–<b>' + s2 + '</b><span class="c2">' + esc(f.club2) + '</span></div>' +
-      '<div class="sub">' + frDay(day) + ' · ' + list.length + ' partie' + (list.length > 1 ? 's' : '') + ' jouée' + (list.length > 1 ? 's' : '') + ' sur 14</div></div>';
+      '<div class="sub">' + frDay(day) + ' · ' + list.length + ' partie' + (list.length > 1 ? 's' : '') + ' jouée' + (list.length > 1 ? 's' : '') + ' sur 14</div>' +
+      '<button class="delR" data-renc="' + esc(id) + '" data-day="' + esc(day) + '">&#128465; Supprimer toute la rencontre</button></div>';
     h += lv;
     for (i = 0; i < list.length; i++) h += matchCard(list[i], partieLabel(list[i]));
 
@@ -390,6 +398,40 @@ table.st { width: 100%; border-collapse: separate; border-spacing: 4px; margin: 
     }
     $('view').innerHTML = nb || lv ? h : '<div class="empty">Aucun match simple ce jour-là.</div>';
   }
+
+  // ---------- Suppression d'un match ou d'une rencontre ----------
+  function apiDel(params, cb) {
+    var name = 'ttdel' + (++n) + '_' + Date.now(), s = document.createElement('script'), done = false;
+    function finish(err, d) {
+      if (done) return; done = true;
+      window[name] = function () {};
+      if (s.parentNode) s.parentNode.removeChild(s);
+      cb(err, d);
+    }
+    window[name] = function (d) { finish(null, d); };
+    s.onerror = function () { finish('reseau'); };
+    setTimeout(function () { finish('reseau'); }, 20000);
+    var qs = 'action=del&code=' + encodeURIComponent(getCode()) + '&callback=' + name;
+    for (var k in params) if (params.hasOwnProperty(k)) qs += '&' + k + '=' + encodeURIComponent(params[k]);
+    s.src = SCORE_API + (SCORE_API.indexOf('?') < 0 ? '?' : '&') + qs;
+    document.body.appendChild(s);
+  }
+
+  $('view').addEventListener('click', function (ev) {
+    var b = ev.target;
+    while (b && b !== this && !(b.className === 'del' || b.className === 'delR')) b = b.parentNode;
+    if (!b || b === this) return;
+    var renc = b.getAttribute('data-renc');
+    if (!window.confirm(renc ? 'Supprimer toute la rencontre (toutes ses parties) ? C\'est définitif.' : 'Supprimer ce match ? C\'est définitif.')) return;
+    status('Suppression…');
+    apiDel(renc ? { rencontre: renc } : { id: b.getAttribute('data-id') }, function (err, d) {
+      if (d && d.code) { setCode(''); askCode('Code incorrect.'); return; }
+      if (err || !d || !d.ok) { status('Suppression impossible. Vérifiez la connexion.', true); return; }
+      status(d.supprimes ? 'Supprimé.' : 'Déjà supprimé.');
+      if (renc) location.hash = '#j=' + encodeURIComponent(b.getAttribute('data-day'));
+      load(true);
+    });
+  }, false);
 
   $('reload').addEventListener('click', function () { load(false); }, false);
   $('logout').addEventListener('click', function () { setCode(''); askCode(''); }, false);

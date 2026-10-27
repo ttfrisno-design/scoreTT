@@ -11,7 +11,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#10141c">
 <link rel="manifest" href="manifest.json">
-<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="icon" type="image/svg+xml" href="logo.svg">
+<link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
 /* Compatible Safari 9 (iPad 2 / iOS 9.3.5) : pas de grid, pas de variables CSS, flex préfixé */
@@ -26,6 +27,7 @@ button { font-family: inherit; cursor: pointer; }
 #setup { position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 30px 20px; }
 #setup .box { max-width: 560px; margin: 0 auto; background: #1b2230; border-radius: 14px; padding: 26px; }
 #setup h1 { margin: 0 0 22px; font-size: 30px; text-align: center; }
+h1 .logo { width: 44px; height: 44px; margin-right: 12px; vertical-align: middle; border-radius: 10px; }
 #setup label { display: block; font-size: 17px; color: #9fb0c8; margin: 16px 0 6px; }
 #setup input[type=text] { width: 100%; font-size: 24px; padding: 12px; border-radius: 8px; border: 2px solid #33405a;
   background: #0f141d; color: #fff; -webkit-user-select: text; user-select: text; -webkit-appearance: none; }
@@ -207,7 +209,7 @@ html, body { overscroll-behavior: none; }
 <!-- Configuration -->
 <div id="setup">
   <div class="box">
-    <h1>&#127955; Tennis de table</h1>
+    <h1><img class="logo" src="logo.svg" width="44" height="44" alt="">Tennis de table</h1>
     <div class="tabs">
       <button class="tab" id="tabSimple">Match simple</button>
       <button class="tab" id="tabTeam">Rencontre par équipes</button>

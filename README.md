@@ -24,6 +24,12 @@ Le tableau de score passe en **plein écran** dès qu'un match s'affiche (Androi
 le bouton ⛶ en haut permet d'en sortir ou d'y revenir. Sur iPhone et iPad 2, le plein écran
 s'obtient en ouvrant le site depuis l'icône ajoutée à l'écran d'accueil.
 
+## Hors ligne
+
+- Appareils récents : `sw.js` (service worker) garde une copie du site.
+- iPad 2 / anciens Safari : `app.appcache`. **À chaque mise à jour du site, changer la ligne
+  `# version ...` de `app.appcache`**, sinon l'iPad continue d'afficher l'ancienne version.
+
 ## Rencontre par équipes (4 contre 4)
 
 Onglet « Rencontre par équipes » : saisir la journée, les deux clubs et les joueurs A B C D / W X Y Z.

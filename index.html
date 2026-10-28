@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" manifest="app.appcache">
 <head>
 <meta charset="utf-8">
 <title>Ping Score</title>
@@ -399,6 +399,7 @@ html, body { overscroll-behavior: none; }
   var tmoTimer = null, toastTimer = null;
   // Télécommande : role '' (aucune), 'tab' (affiche le score), 'tel' (commande à distance)
   var RC = { role: '', code: '', since: -1, v: 0, tel: 0, gen: 0, pubBusy: false, pubDirty: false, flip: false, etat: null };
+  var majEnAttente = false; // nouvelle version hors ligne (app.appcache) prête, appliquée au retour à l'accueil
 
   function $(id) { return document.getElementById(id); }
   function q(el, sel) { return el.querySelector(sel); }
@@ -911,6 +912,8 @@ html, body { overscroll-behavior: none; }
   }
 
   function openSetup() {
+    // Nouvelle version du site téléchargée pendant le match (iPad 2) : on l'applique maintenant
+    if (majEnAttente) { majEnAttente = false; try { window.applicationCache.swapCache(); } catch (e) {} location.reload(); return; }
     endTimeout();
     hide($('board')); hide($('gameOver')); hide($('confirmNew'));
     if (S && !S.finished && !S.renc) show($('resumeBtn')); else hide($('resumeBtn'));
@@ -1279,6 +1282,18 @@ html, body { overscroll-behavior: none; }
   // Fonctionne hors ligne sur les appareils récents (l'iPad 2 n'a pas de service worker)
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
     navigator.serviceWorker.register('sw.js')['catch'](function () {});
+  }
+
+  // iPad 2 / anciens Safari : cache hors ligne app.appcache. Quand une nouvelle version du site
+  // a été téléchargée, on recharge — tout de suite sur l'écran d'accueil, sinon à la fin du match.
+  if (window.applicationCache) {
+    var ac = window.applicationCache;
+    var majPrete = function () {
+      if (!$('setup').classList.contains('hidden')) { try { ac.swapCache(); } catch (e) {} location.reload(); }
+      else majEnAttente = true;
+    };
+    ac.addEventListener('updateready', majPrete, false);
+    if (ac.status === ac.UPDATEREADY) majPrete();
   }
   window.addEventListener('resize', function () { if (S) sizeFonts(); }, false);
   window.addEventListener('orientationchange', function () { setTimeout(function () { if (S) sizeFonts(); }, 300); }, false);

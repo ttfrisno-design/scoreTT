@@ -1,14 +1,14 @@
 {
-  "name": "Score Tennis de table",
-  "short_name": "Score TT",
+  "name": "Ping Score – Tennis de table",
+  "short_name": "Ping Score",
   "description": "Tableau de score de tennis de table : matchs simples et rencontres par équipes.",
   "lang": "fr",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#10141c",
-  "theme_color": "#10141c",
+  "background_color": "#1c2333",
+  "theme_color": "#1c2333",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }

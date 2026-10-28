@@ -1,7 +1,7 @@
 // Service worker : le site reste utilisable sans réseau sur les appareils récents.
 // Réseau d'abord (on a toujours la dernière version en ligne), cache en secours.
 // Les envois de scores (script.google.com) ne passent pas par ici.
-var CACHE = 'scoreTT-v2';
+var CACHE = 'scoreTT-v3';
 var FICHIERS = ['./', 'index.html', 'resultats.html', 'config.js', 'manifest.json', 'logo.svg', 'favicon.png',
                 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 

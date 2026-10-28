@@ -1,22 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512">
-  <title>Score TT</title>
-  <!-- Fond sombre de l'application, liseré bleu / rouge en bas (couleurs du tableau) -->
-  <defs>
-    <clipPath id="coins"><rect width="100" height="100" rx="22"/></clipPath>
-  </defs>
-  <g clip-path="url(#coins)">
-    <rect width="100" height="100" fill="#1b2230"/>
-    <rect y="90" width="50" height="10" fill="#1d4fa8"/>
-    <rect x="50" y="90" width="50" height="10" fill="#b0322f"/>
-  </g>
-  <!-- Raquette : manche en bois évasé, bord bois, revêtement rouge -->
-  <g transform="translate(42 40) rotate(-40)">
-    <path d="M-9 22 L9 22 L7 30 L7 52 Q7 56 3 56 L-3 56 Q-7 56 -7 52 L-7 30 Z" fill="#c9965a"/>
-    <rect x="-7" y="36" width="14" height="3" fill="#a8743f"/>
-    <rect x="-7" y="44" width="14" height="3" fill="#a8743f"/>
-    <ellipse rx="27" ry="30" fill="#d9b07a"/>
-    <ellipse rx="25" ry="28" fill="#e03a32"/>
-  </g>
-  <!-- Balle -->
-  <circle cx="80" cy="22" r="9" fill="#ffffff"/>
+  <title>Ping Score</title>
+  <rect width="100" height="100" rx="22.5" fill="#1c2333"/>
+  <rect x="11.5" y="24" width="36" height="52" rx="5" fill="#f6f4ee"/>
+  <path fill="#1c2333" stroke="#1c2333" stroke-width="1.5" stroke-linejoin="miter" d="M37.27 35.8L37.27 39.38L31.15 64.2L25.41 64.2L31.36 40.1L27.29 40.1L27.29 43.4L21.73 43.4L21.73 35.8Z"/>
+  <rect x="11.5" y="49.4" width="36" height="1.2" fill="#1c2333"/>
+  <rect x="52.5" y="24" width="36" height="52" rx="5" fill="#f08a3c"/>
+  <path fill="#1c2333" stroke="#1c2333" stroke-width="1.5" stroke-linejoin="miter" d="M70.46 64.35C68.04 64.35 66.16 63.8 64.82 62.71C63.47 61.61 62.8 60.07 62.8 58.1L62.8 56.77L68.61 56.77L68.61 58.08C68.61 58.54 68.78 58.91 69.11 59.17C69.43 59.43 69.89 59.56 70.46 59.56C71.07 59.56 71.55 59.42 71.88 59.15C72.22 58.88 72.39 58.5 72.39 58.02L72.39 51.46C72.39 51.01 72.25 50.67 71.96 50.43C71.68 50.19 71.29 50.07 70.77 50.07C70.29 50.07 69.91 50.18 69.63 50.39C69.36 50.61 69.23 50.91 69.25 51.32L63.55 51.32L63.55 35.65L77.92 35.65L77.92 40.42L69.36 40.42L69.36 46.34C69.86 45.99 70.4 45.72 70.97 45.54C71.54 45.35 72.11 45.26 72.69 45.26C74.43 45.26 75.78 45.8 76.75 46.88C77.71 47.97 78.2 49.49 78.2 51.46L78.2 58.02C78.2 60.01 77.52 61.56 76.17 62.68C74.82 63.79 72.92 64.35 70.46 64.35Z"/>
+  <rect x="52.5" y="49.4" width="36" height="1.2" fill="#1c2333"/>
 </svg>

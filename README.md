@@ -1,4 +1,8 @@
-# scoreTT – Tableau de score de tennis de table (iPad 2)
+# Ping Score – Tableau de score de tennis de table
+
+![Ping Score](icon-192.png)
+
+Logo : `logo.svg` (marqueur à volets 7 | 5). Les icônes PNG en sont tirées.
 
 - `index.html` : tableau de score (compatible Safari 9 / iOS 9.3.5).
 - `resultats.html` : consultation des matchs enregistrés.

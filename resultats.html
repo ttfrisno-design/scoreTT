@@ -235,7 +235,9 @@ table.st { width: 100%; border-collapse: separate; border-spacing: 4px; margin: 
     var ago = srvNow && e.maj ? Math.max(0, Math.round((srvNow - e.maj) / 1000)) : 0;
     var agoTxt = ago < 60 ? 'il y a ' + ago + ' s' : 'il y a ' + Math.round(ago / 60) + ' min';
     var lbl = e.r ? 'Partie ' + (e.r.i + 1) + ' · ' + esc(String(e.r.l).replace(/^([A-D])([W-Z])$/, '$1 – $2')) : 'Match simple';
-    var h = '<div class="live' + (e.fin ? ' fin' : '') + '"><div class="top"><span class="r">' + agoTxt + ' · en ' + esc(e.bo) + '</span>' +
+    var h = '<div class="live' + (e.fin ? ' fin' : '') + '"><div class="top">' +
+      '<button class="del" data-live="' + esc(e.id) + '" title="Retirer ce match en cours">&#128465; Supprimer</button>' +
+      '<span class="r">' + agoTxt + ' · en ' + esc(e.bo) + '</span>' +
       (e.fin ? '<span class="lbl">Terminé</span>' : '<span class="dot"></span><span class="lbl">En direct</span>') + lbl +
       (e.r ? ' · <span class="c1">' + esc(e.r.c1) + '</span> – <span class="c2">' + esc(e.r.c2) + '</span>' : '') +
       (e.r && e.r.a ? ' · Arbitre : ' + esc(e.r.a) : '') + '</div>';
@@ -450,10 +452,13 @@ table.st { width: 100%; border-collapse: separate; border-spacing: 4px; margin: 
     var b = ev.target;
     while (b && b !== this && !(b.className === 'del' || b.className === 'delR')) b = b.parentNode;
     if (!b || b === this) return;
-    var renc = b.getAttribute('data-renc');
-    if (!window.confirm(renc ? 'Supprimer toute la rencontre (toutes ses parties) ? C\'est définitif.' : 'Supprimer ce match ? C\'est définitif.')) return;
+    var renc = b.getAttribute('data-renc'), live = b.getAttribute('data-live');
+    var question = renc ? 'Supprimer toute la rencontre (toutes ses parties) ? C\'est définitif.'
+      : live ? 'Retirer ce match en cours du direct ? Il ne réapparaîtra plus en direct (son résultat final sera quand même enregistré s\'il est terminé).'
+      : 'Supprimer ce match ? C\'est définitif.';
+    if (!window.confirm(question)) return;
     status('Suppression…');
-    apiDel(renc ? { rencontre: renc } : { id: b.getAttribute('data-id') }, function (err, d) {
+    apiDel(renc ? { rencontre: renc } : live ? { direct: live } : { id: b.getAttribute('data-id') }, function (err, d) {
       if (d && d.code) { setCode(''); askCode('Code incorrect.'); return; }
       if (err || !d || !d.ok) { status('Suppression impossible. Vérifiez la connexion.', true); return; }
       status(d.supprimes ? 'Supprimé.' : 'Déjà supprimé.');

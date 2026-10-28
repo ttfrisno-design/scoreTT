@@ -134,6 +134,14 @@ function supprimerSi_(test) {
 
 // Bouton « Supprimer » de la page des résultats : un match (id) ou toute une rencontre (rencontre)
 function supprimer_(p) {
+  // Match en cours : retiré du direct, et l'appareil qui l'arbitre ne peut plus l'y remettre
+  if (p.direct) {
+    var props = PropertiesService.getScriptProperties();
+    var existait = !!props.getProperty('live_' + p.direct);
+    props.deleteProperty('live_' + p.direct);
+    props.setProperty('done_' + p.direct, String(Date.now()));
+    return { ok: true, supprimes: existait ? 1 : 0 };
+  }
   if (!p.id && !p.rencontre) return { ok: false, erreur: 'rien à supprimer' };
   var nb = supprimerSi_(function (o) {
     return p.id ? o.id === String(p.id) : o.rencontre_id === String(p.rencontre);

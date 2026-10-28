@@ -2,7 +2,7 @@ CACHE MANIFEST
 # Ping Score – cache hors ligne pour les anciens Safari (iPad 2 / iOS 9), sans service worker.
 # Les navigateurs récents ignorent ce fichier et utilisent sw.js.
 # IMPORTANT : changer la ligne « version » à chaque mise à jour du site, sinon l'iPad garde l'ancienne version.
-# version 2026-10-28a
+# version 2026-10-28b
 
 CACHE:
 index.html

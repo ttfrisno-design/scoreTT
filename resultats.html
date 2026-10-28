@@ -110,6 +110,11 @@ table.st { width: 100%; border-collapse: separate; border-spacing: 4px; margin: 
 .st td.pt { min-width: 56px; font-size: 28px; font-weight: bold; background: #10141c; border-radius: 8px; }
 .st tr.win td.n { font-weight: bold; }
 .st tr.win td.n:after { content: " \2714"; color: #6fdc9a; font-size: 17px; }
+.cy, .cr { display: inline-block; width: 11px; height: 15px; border-radius: 2px; margin-left: 5px; vertical-align: middle; }
+.cy { background: #f5c400; } .cr { background: #e0261b; }
+.st td.n small { margin-left: 8px; font-size: 13px; color: #9fb0c8; }
+.cartons { margin-top: 6px; font-size: 14px; color: #cfd8e6; }
+.cartons .cy, .cartons .cr { margin-left: 0; margin-right: 2px; }
 .st .sv { display: inline-block; width: 12px; height: 12px; border-radius: 6px; background: #fff; margin-left: 8px; vertical-align: middle; }
 @media (max-width: 600px) {
   .st td { font-size: 17px; line-height: 32px; } .st td.s { min-width: 28px; font-size: 15px; } .st td.g { min-width: 28px; }
@@ -155,7 +160,10 @@ table.st { width: 100%; border-collapse: separate; border-spacing: 4px; margin: 
     return JOURS[dt.getDay()] + ' ' + m[3] + '/' + m[2] + '/' + m[1];
   }
   function hour(d) { var m = /(\d{2}):(\d{2})/.exec(d || ''); return m ? m[1] + 'h' + m[2] : ''; }
-  function won1(m) { return (parseInt(m.manches1, 10) || 0) > (parseInt(m.manches2, 10) || 0); }
+  function won1(m) {
+    if (m.vainqueur) return m.vainqueur === m.joueur1; // juste aussi en cas de disqualification
+    return (parseInt(m.manches1, 10) || 0) > (parseInt(m.manches2, 10) || 0);
+  }
 
   // Une partie rejouée remplace la précédente (même rencontre, même numéro)
   function dedupe(list) {
@@ -231,7 +239,8 @@ table.st { width: 100%; border-collapse: separate; border-spacing: 4px; margin: 
       (e.fin ? '<span class="lbl">Terminé</span>' : '<span class="dot"></span><span class="lbl">En direct</span>') + lbl +
       (e.r ? ' · <span class="c1">' + esc(e.r.c1) + '</span> – <span class="c2">' + esc(e.r.c2) + '</span>' : '') +
       (e.r && e.r.a ? ' · Arbitre : ' + esc(e.r.a) : '') + '</div>';
-    return h + scoreTable([e.n[0], e.n[1]], [e.g[0], e.g[1]], e.h || [], e.fin ? null : [e.p[0], e.p[1]], e.fin ? -1 : e.sv) + '</div>';
+    return h + scoreTable([e.n[0], e.n[1]], [e.g[0], e.g[1]], e.h || [], e.fin ? null : [e.p[0], e.p[1]], e.fin ? -1 : e.sv,
+      -1, e.c ? { c: e.c, co: e.co || [0, 0] } : null) + '</div>';
   }
 
   function liveHtml(filter) {
@@ -314,15 +323,25 @@ table.st { width: 100%; border-collapse: separate; border-spacing: 4px; margin: 
   function p2(x) { x = String(x == null ? '' : x); return x.length < 2 ? '0' + x : x; }
 
   // Tableau 2 lignes : nom | manches gagnées | score de chaque manche (2 chiffres) | points en cours (direct)
-  function scoreTable(names, games, sets, pts, sv) {
+  // gagnant : 0 / 1 si connu (ex. disqualification), sinon d'après les manches ; cartes : niveaux de faute et conseillers (direct)
+  function cartesHtml(lvl, coach) {
+    var h = '';
+    if (lvl >= 1) h += '<span class="cy"></span>';
+    if (lvl >= 2) h += '<span class="cr"></span>';
+    if (coach) h += '<small>C</small><span class="' + (coach >= 2 ? 'cr' : 'cy') + '"></span>';
+    return h;
+  }
+
+  function scoreTable(names, games, sets, pts, sv, gagnant, cartes) {
     var g1 = parseInt(games[0], 10) || 0, g2 = parseInt(games[1], 10) || 0, i, k;
     var h = '<table class="st"><tr><th></th><th>Man.</th>';
     for (i = 0; i < sets.length; i++) h += '<th>' + (i + 1) + '</th>';
     if (pts) h += '<th>Pts</th>';
     h += '</tr>';
     for (k = 0; k < 2; k++) {
-      var win = !pts && (k === 0 ? g1 > g2 : g2 > g1);
+      var win = !pts && (gagnant === 0 || gagnant === 1 ? k === gagnant : (k === 0 ? g1 > g2 : g2 > g1));
       h += '<tr' + (win ? ' class="win"' : '') + '><td class="n">' + esc(names[k]) + (sv === k ? '<span class="sv" title="Au service"></span>' : '') +
+        (cartes ? cartesHtml(cartes.c[k], cartes.co[k]) : '') +
         '</td><td class="g">' + (k === 0 ? g1 : g2) + '</td>';
       for (i = 0; i < sets.length; i++) {
         var a = parseInt(sets[i][k], 10) || 0, b = parseInt(sets[i][1 - k], 10) || 0;
@@ -341,7 +360,8 @@ table.st { width: 100%; border-collapse: separate; border-spacing: 4px; margin: 
       '<span class="r">' + esc(m.format || '') + (m.duree_min ? ' · ' + esc(m.duree_min) + ' min' : '') +
       '</span>' + (label ? '<span class="lbl">' + label + '</span>' : '') + hour(m.date) +
       (m.arbitre ? ' · Arbitre : ' + esc(m.arbitre) : '') + '</div>' +
-      scoreTable([m.joueur1, m.joueur2], [m.manches1, m.manches2], sets, null, -1) + '</div>';
+      scoreTable([m.joueur1, m.joueur2], [m.manches1, m.manches2], sets, null, -1, won1(m) ? 0 : 1) +
+      (m.cartons ? '<div class="cartons"><span class="cy"></span><span class="cr"></span> ' + esc(m.cartons) + '</div>' : '') + '</div>';
   }
 
   function partieLabel(m) {

@@ -17,7 +17,8 @@ var CODE_CONSULTATION = 'changez-moi';
 var COLONNES = ['id', 'date', 'joueur1', 'joueur2', 'manches1', 'manches2',
                 'vainqueur', 'detail', 'format', 'duree_min',
                 // Rencontre par équipes (vide pour un match simple)
-                'rencontre_id', 'journee', 'club1', 'club2', 'partie', 'ordre', 'arbitre'];
+                'rencontre_id', 'journee', 'club1', 'club2', 'partie', 'ordre', 'arbitre',
+                'cartons'];   // ex. « Alice : jaune ; Alice : jaune+rouge (1 pt) »
 
 var DUREE_DIRECT_MS = 3 * 3600 * 1000;   // un direct sans nouvelle depuis 3 h est retiré
 var DUREE_FINI_MS = 24 * 3600 * 1000;    // mémoire des matchs terminés (évite un direct fantôme)

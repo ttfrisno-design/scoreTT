@@ -213,6 +213,15 @@ table.st { width: 100%; border-collapse: separate; border-spacing: 4px; margin: 
       if (err || !data || !data.ok) { if (!silent) status('Impossible de charger les résultats. Vérifiez la connexion.', true); return; }
       all = dedupe(data.matchs || []);
       live = data.direct || [];
+      // Le serveur renvoie les matchs en direct dans un ordre variable : on les trie toujours pareil
+      // (rencontre, puis numéro de partie ; matchs simples dans l'ordre où ils ont commencé)
+      live.sort(function (a, b) {
+        var ka = a.r ? a.r.id : '', kb = b.r ? b.r.id : '';
+        if (ka !== kb) return ka < kb ? -1 : 1;
+        var ia = a.r ? a.r.i : 0, ib = b.r ? b.r.i : 0;
+        if (ia !== ib) return ia - ib;
+        return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+      });
       srvNow = data.maintenant || 0;
       loaded = true;
       $('codeBox').style.display = 'none';

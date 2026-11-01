@@ -395,6 +395,12 @@ html, body { overscroll-behavior: none; }
   <button id="ceNo">Non</button>
 </div></div>
 
+<div id="servOv" class="overlay hidden"><div class="card">
+  <h2>Corriger le service</h2><p id="servText"></p>
+  <button class="go" id="servYes">Oui, corriger</button>
+  <button id="servNo">Non</button>
+</div></div>
+
 <div id="confirmNew" class="overlay hidden"><div class="card">
   <h2 id="cnTitle">Nouveau match ?</h2><p id="cnText">Le match en cours sera effacé.</p>
   <button class="go" id="cnYes">Oui, nouveau match</button>
@@ -1628,12 +1634,17 @@ html, body { overscroll-behavior: none; }
     if (S.pending === null) toast('Service corrigé : ' + S.names[server()] + ' sert');
     else toast('Service corrigé pour les manches suivantes');
   }
+  // Confirmation dans une fenêtre de l'appli : window.confirm() ouvert pendant un toucher
+  // (touchstart) peut se refermer tout seul sur iPad / iPhone et la correction ne se faisait pas.
   tap($('servBtn'), function () {
     if (!S || S.finished) return;
-    var autre = S.pending === null ? S.names[1 - server()] : '';
-    if (!window.confirm(autre ? 'Corriger le service ? ' + autre + ' servira à la place.' : 'Corriger le premier serveur ?')) return;
-    changerServeur();
+    $('servText').textContent = S.pending === null
+      ? S.names[server()] + ' sert actuellement. ' + S.names[1 - server()] + ' servira à la place.'
+      : 'Le premier serveur des manches suivantes sera inversé.';
+    show($('servOv'));
   });
+  tap($('servYes'), function () { hide($('servOv')); changerServeur(); });
+  tap($('servNo'), function () { hide($('servOv')); });
   tap($('cardClose'), function () { hide($('cardOv')); });
   $('cardList').addEventListener('click', function (ev) {
     var b = ev.target;

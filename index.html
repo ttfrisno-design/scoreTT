@@ -103,6 +103,7 @@ button { font-family: inherit; cursor: pointer; }
 #topbar { position: absolute; top: 0; left: 0; right: 0; height: 64px; background: #0a0d13; padding: 8px 8px; white-space: nowrap; overflow: hidden; }
 #topbar button { height: 48px; padding: 0 14px; margin-right: 6px; font-size: 17px; border: 0; border-radius: 8px; background: #2a3448; color: #fff; }
 #topbar button.red { background: #8a2b2b; }
+.servDot { display: inline-block; width: 14px; height: 14px; border-radius: 7px; background: #fff; vertical-align: -1px; }
 #matchInfo { float: right; line-height: 48px; font-size: 16px; color: #9fb0c8; padding-right: 6px; }
 
 #panels { position: absolute; top: 64px; left: 0; right: 0; bottom: 56px; }
@@ -196,6 +197,9 @@ html, body { overscroll-behavior: none; }
 @media (max-width: 599px) {
   #topbar { height: 92px; }
   #topbar button { height: 44px; padding: 0 10px; margin-right: 4px; font-size: 15px; }
+  /* Téléphone : boutons réduits à leur symbole, barre défilable au doigt si elle déborde */
+  #topbar .lbl { display: none; }
+  #topbar { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   #matchInfo { float: none; display: block; line-height: 30px; font-size: 14px; padding: 2px 4px 0; }
   #panels { top: 92px; }
   #history { font-size: 18px; } #history span { margin: 0 4px; padding: 0 8px; }
@@ -329,8 +333,9 @@ html, body { overscroll-behavior: none; }
 <!-- Tableau -->
 <div id="board" class="hidden">
   <div id="topbar">
-    <button id="undoBtn">&#8630; Annuler</button>
-    <button id="swapBtn">&#8644; Côtés</button>
+    <button id="undoBtn">&#8630;<span class="lbl"> Annuler</span></button>
+    <button id="swapBtn">&#8644;<span class="lbl"> Côtés</span></button>
+    <button id="servBtn" title="Corriger le serveur"><span class="servDot"></span><span class="lbl"> Service</span></button>
     <button id="newBtn" class="red">Nouveau match</button>
     <button id="cardBtn" title="Cartons"><span class="cy"></span><span class="cr"></span></button>
     <button id="rcBtn" title="Télécommande">&#128241;</button>
@@ -933,6 +938,7 @@ html, body { overscroll-behavior: none; }
     else if (m[0] === 'coach') carteConseiller(p);
     else if (m[0] === 'manche') perteManche(p);
     else if (m[0] === 'disq') disqualifier(p);
+    else if (m[0] === 'serv') changerServeur();
   }
 
   // Téléphone : envoie une commande ; le point s'affiche tout de suite, la tablette confirme ensuite
@@ -1549,7 +1555,7 @@ html, body { overscroll-behavior: none; }
   try { window.addEventListener('test', null, Object.defineProperty({}, 'passive', { get: function () { passiveOk = true; } })); } catch (e) {}
   document.addEventListener('touchmove', function (e) {
     if (!$('setup').classList.contains('hidden')) return;
-    for (var t = e.target; t && t !== document; t = t.parentNode) if (t.classList && t.classList.contains('card')) return;
+    for (var t = e.target; t && t !== document; t = t.parentNode) if (t.classList && t.classList.contains('card') || t.id === 'topbar') return;
     e.preventDefault();
   }, passiveOk ? { passive: false } : false);
 
@@ -1601,6 +1607,22 @@ html, body { overscroll-behavior: none; }
 
   // Cartons
   tap($('cardBtn'), ouvrirCartons);
+  // Correction du premier serveur : le serveur actuel et tous les services suivants passent à l'adversaire
+  function changerServeur() {
+    if (RC.role === 'tel') { rcSend('serv'); return; }
+    if (!S || S.finished) return;
+    pushUndo();
+    S.firstServer = 1 - S.firstServer;
+    save(); render();
+    if (S.pending === null) toast('Service corrigé : ' + S.names[server()] + ' sert');
+    else toast('Service corrigé pour les manches suivantes');
+  }
+  tap($('servBtn'), function () {
+    if (!S || S.finished) return;
+    var autre = S.pending === null ? S.names[1 - server()] : '';
+    if (!window.confirm(autre ? 'Corriger le service ? ' + autre + ' servira à la place.' : 'Corriger le premier serveur ?')) return;
+    changerServeur();
+  });
   tap($('cardClose'), function () { hide($('cardOv')); });
   $('cardList').addEventListener('click', function (ev) {
     var b = ev.target;

@@ -363,6 +363,7 @@ html, body { overscroll-behavior: none; }
 
 <div id="gameOver" class="overlay hidden"><div class="card">
   <h2 id="goTitle"></h2><p id="goText"></p>
+  <div id="goDbl"></div>
   <button class="go" id="nextBtn">Manche suivante</button>
   <button id="goUndo">&#8630; Annuler le dernier point</button>
 </div></div>
@@ -384,6 +385,13 @@ html, body { overscroll-behavior: none; }
   <div id="pvServe">
     <label>Premier serveur</label>
     <div class="choices two" id="pvFs"><button class="choice on" data-v="0"></button><button class="choice" data-v="1"></button></div>
+  </div>
+  <!-- Double : premier serveur (un des 4 joueurs) et premier receveur (un des 2 adversaires) -->
+  <div id="pvDblServe" class="hidden">
+    <label>Premier serveur</label>
+    <div class="choices four" id="pvDS"><button class="choice on" data-v="0"></button><button class="choice" data-v="1"></button><button class="choice" data-v="2"></button><button class="choice" data-v="3"></button></div>
+    <label>Premier receveur</label>
+    <div class="choices two" id="pvDR"><button class="choice on" data-v="0"></button><button class="choice" data-v="1"></button></div>
   </div>
   <button class="go" id="pvGo">Commencer la partie</button>
   <button id="pvCancel">Annuler</button>
@@ -547,11 +555,13 @@ html, body { overscroll-behavior: none; }
     save(); render();
   }
 
-  function nextGame() {
+  // m : en double, joueur (0 ou 1) de la paire qui sert qui servira en premier dans la nouvelle manche
+  function nextGame(m) {
     if (S.finished) return;
     pushUndo();
     S.points = [0, 0];
     S.gameIndex++;
+    if (S.dsrv) S.dsrv[S.gameIndex] = m ? 1 : 0;
     S.pending = null;
     S.swapped = !S.swapped; // on change de côté à chaque manche
     S.decSwapped = false;
@@ -560,6 +570,31 @@ html, body { overscroll-behavior: none; }
     S.penPending = [0, 0];
     for (var k = 0; k < 2; k++) for (var n = 0; n < pen[k]; n++) if (S.pending === null && !S.finished) scoreOne(k);
     save(); render();
+  }
+
+  // ---------- Ordre de service en double (règles du jeu, art. 2.14) ----------
+  // Dans chaque manche, la paire qui sert choisit son premier serveur. Dans la 1re manche, la paire
+  // qui reçoit choisit son premier receveur ; ensuite, le premier receveur est le joueur qui servait
+  // au premier serveur dans la manche précédente. Ordre : X→Y, Y→X', X'→Y', Y'→X (2 services chacun,
+  // 1 à partir de 10-10). Manche décisive : à 5 points, la paire qui reçoit inverse son ordre de réception.
+  // S.dsrv[g] : joueur (0/1) de la paire qui sert qui sert en premier dans la manche g ;
+  // S.drec0 : joueur (0/1) de la paire qui reçoit qui reçoit en premier dans la 1re manche.
+  function premierRecev(g, a) {
+    if (g === 0) return S.drec0 || 0;
+    var ap = S.dsrv[g - 1] || 0, bp = premierRecev(g - 1, ap);
+    return a === bp ? ap : 1 - ap;
+  }
+  function servRecDouble(g, k) {   // g : manche, k : numéro du tour de service dans la manche
+    var s = (S.firstServer + g) % 2, a = S.dsrv[g] || 0, b = premierRecev(g, a);
+    if (g === S.gameIndex && isDeciding() && S.decSwapped) b = 1 - b;
+    var seq = [[[s, a], [1 - s, b]], [[1 - s, b], [s, 1 - a]], [[s, 1 - a], [1 - s, 1 - b]], [[1 - s, 1 - b], [s, a]]];
+    var x = seq[k % 4];
+    return { srv: x[0], rec: x[1] };
+  }
+  function infoDouble() {
+    if (!S || !S.dsrv || membres(0).length < 2 || S.pending !== null || S.finished) return null;
+    var t = S.points[0] + S.points[1];
+    return servRecDouble(S.gameIndex, t < 20 ? Math.floor(t / 2) : t - 10);
   }
 
   // ---------- Cartons (règles du jeu FFTT / ITTF, art. 3.5.1 et 3.5.2) ----------
@@ -703,7 +738,10 @@ html, body { overscroll-behavior: none; }
     var srv = S.pending === null && !S.finished && server() === p;
     q(el, '.serve').style.visibility = srv ? 'visible' : 'hidden';
     var t = S.points[0] + S.points[1];
-    q(el, '.serveText').textContent = srv ? (t >= 20 ? 'Service (1 seul)' : (t % 2 === 0 ? 'Service 1/2' : 'Service 2/2')) : '';
+    var nb = t >= 20 ? '1 seul' : (t % 2 === 0 ? '1/2' : '2/2'), di = infoDouble();
+    if (di) // double : qui sert et qui reçoit
+      q(el, '.serveText').textContent = di.srv[0] === p ? 'Sert : ' + membres(p)[di.srv[1]] + ' (' + nb + ')' : 'Reçoit : ' + membres(p)[di.rec[1]];
+    else q(el, '.serveText').textContent = srv ? 'Service ' + nb : '';
     var tb = q(el, '.tmo');
     tb.className = 'tmo' + (S.timeouts[p] ? ' used' : '');
     tb.textContent = S.timeouts[p] ? 'Temps mort pris' : 'Temps mort';
@@ -739,6 +777,7 @@ html, body { overscroll-behavior: none; }
     if (S.pending !== null) {
       var name = S.names[S.pending];
       var last = S.history[S.history.length - 1] || [S.points[0], S.points[1]];
+      $('goDbl').innerHTML = ''; show($('nextBtn'));
       if (S.disq !== undefined && S.disq !== null) {
         $('goTitle').textContent = S.names[S.disq] + ' est disqualifié(e)';
         $('goText').textContent = 'Carton rouge du juge-arbitre : ' + name + ' gagne le match.';
@@ -751,6 +790,16 @@ html, body { overscroll-behavior: none; }
         $('goTitle').textContent = 'Manche pour ' + name;
         $('goText').textContent = last[0] + ' – ' + last[1] + '   ·   Manches : ' + S.games[0] + ' – ' + S.games[1];
         $('nextBtn').textContent = 'Manche suivante (changement de côté)';
+        // Double : la paire qui sert choisit son serveur ; le receveur en découle
+        if (S.dsrv && membres(0).length === 2) {
+          var g1 = S.gameIndex + 1, s1 = (S.firstServer + g1) % 2, hd = '';
+          for (var mm = 0; mm < 2; mm++) {
+            var rr = premierRecev(g1, mm);
+            hd += '<button class="go dblNext" data-m="' + mm + '">Manche suivante : ' + esc(membres(s1)[mm]) + ' sert à ' + esc(membres(1 - s1)[rr]) + '</button>';
+          }
+          $('goDbl').innerHTML = '<p class="cardNote">Changement de côté. Qui sert en premier ?</p>' + hd;
+          hide($('nextBtn'));
+        } else { $('goDbl').innerHTML = ''; show($('nextBtn')); }
       }
       show($('gameOver'));
     } else {
@@ -948,6 +997,7 @@ html, body { overscroll-behavior: none; }
     else if (m[0] === 'mn') removePoint(p);
     else if (m[0] === 'undo') undo();
     else if (m[0] === 'next') { if (S.pending !== null) onNext(); }
+    else if (m[0] === 'nexta' || m[0] === 'nextb') { if (S.pending !== null && !S.finished) nextGame(m[0] === 'nextb' ? 1 : 0); }
     else if (m[0] === 'tmo') startTimeout(p);
     else if (m[0] === 'tmoend') endTimeout();
     else if (m[0] === 'fautea' || m[0] === 'fauteb') fauteJoueur(p, m[0] === 'fauteb' ? 1 : 0);
@@ -1418,9 +1468,11 @@ html, body { overscroll-behavior: none; }
         b1.className = 'choice' + (d && d.a.indexOf(k) >= 0 ? ' on' : '');
         b2.className = 'choice' + (d && d.b.indexOf(k) >= 0 ? ' on' : '');
       }
-      $('pvFs').children[0].textContent = R.clubs[0]; $('pvFs').children[1].textContent = R.clubs[1];
+      hide($('pvServe')); show($('pvDblServe'));
+      setChoice('pvDS', 0); setChoice('pvDR', 0);
+      majServDouble();
     } else {
-      hide($('pvDouble'));
+      hide($('pvDouble')); hide($('pvDblServe')); show($('pvServe'));
       t = names[0] + '  –  ' + names[1];
       $('pvFs').children[0].textContent = names[0]; $('pvFs').children[1].textContent = names[1];
     }
@@ -1430,6 +1482,16 @@ html, body { overscroll-behavior: none; }
     $('pvGo').textContent = res ? 'Rejouer la partie' : 'Commencer la partie';
     setChoice('pvFs', 0);
     show($('partieOv'));
+  }
+
+  // Double : boutons « premier serveur » (4 joueurs choisis) et « premier receveur » (2 adversaires)
+  function majServDouble() {
+    var R = loadRenc(); if (!R) return;
+    var a = selected('dbl1'), b = selected('dbl2');
+    var noms = [a.length === 2 ? [R.p1[a[0]], R.p1[a[1]]] : ['?', '?'], b.length === 2 ? [R.p2[b[0]], R.p2[b[1]]] : ['?', '?']];
+    var ds = $('pvDS').children, dr = $('pvDR').children, v = choiceVal('pvDS'), cote = Math.floor(v / 2);
+    for (var k = 0; k < 4; k++) ds[k].textContent = noms[Math.floor(k / 2)][k % 2];
+    dr[0].textContent = noms[1 - cote][0]; dr[1].textContent = noms[1 - cote][1];
   }
 
   function startPartie() {
@@ -1443,7 +1505,13 @@ html, body { overscroll-behavior: none; }
       rencPush({ dbl: R.dbl }); // composition visible sur les autres tablettes
     }
     names = partieNames(R, i);
-    newMatch(names[0], names[1], R.bestOf, choiceVal('pvFs'));
+    if (isDouble(i)) {
+      // v : 0-1 = joueurs du club 1, 2-3 = joueurs du club 2 ; le club du serveur sert en premier
+      var v = choiceVal('pvDS');
+      newMatch(names[0], names[1], R.bestOf, Math.floor(v / 2));
+      S.dsrv = [v % 2];
+      S.drec0 = choiceVal('pvDR');
+    } else newMatch(names[0], names[1], R.bestOf, choiceVal('pvFs'));
     S.renc = { id: R.id, idx: i, label: plabel(i), arb: arbitre(R, i), clubs: [R.clubs[0], R.clubs[1]] };
     // Avertissements déjà reçus dans la rencontre (joueurs de cette partie et conseillers des clubs)
     S.off = {};
@@ -1504,7 +1572,7 @@ html, body { overscroll-behavior: none; }
   // Rencontre par équipes
   tap($('tabSimple'), function () { setMode('simple'); });
   tap($('tabTeam'), function () { setMode('team'); });
-  choiceGroup('bestOfT'); choiceGroup('pvFs');
+  choiceGroup('bestOfT'); choiceGroup('pvFs'); choiceGroup('pvDS'); choiceGroup('pvDR');
   ['dbl1', 'dbl2'].forEach(function (id) {
     var btns = $(id).querySelectorAll('.choice');
     for (var i = 0; i < btns.length; i++) {
@@ -1512,10 +1580,24 @@ html, body { overscroll-behavior: none; }
         tap(b, function () {
           if (!b.classList.contains('on') && selected(id).length >= 2) { toast('2 joueurs maximum'); return; }
           b.classList.toggle('on');
+          majServDouble();
         });
       })(btns[i]);
     }
   });
+  // Le receveur proposé dépend du club du serveur choisi
+  [].forEach.call($('pvDS').children, function (b) { tap(b, majServDouble); });
+
+  // Double, fin de manche : « Manche suivante : X sert à Y » (le receveur est imposé par la règle)
+  function suivanteDouble(m) {
+    if (RC.role === 'tel') { rcSend(m ? 'nextb' : 'nexta'); return; }
+    if (S && S.pending !== null && !S.finished) nextGame(m);
+  }
+  $('goDbl').addEventListener('click', function (ev) {
+    var b = ev.target;
+    while (b && b !== this && !b.getAttribute('data-m')) b = b.parentNode;
+    if (b && b !== this) suivanteDouble(parseInt(b.getAttribute('data-m'), 10));
+  }, false);
   tap($('tCreate'), saveTeamForm);
   tap($('tJoinBtn'), rencJoin);
   $('tJoinCode').addEventListener('keydown', function (e) { if (e.keyCode === 13) { e.preventDefault(); rencJoin(); } }, false);

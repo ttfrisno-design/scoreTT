@@ -405,6 +405,12 @@ html, body { overscroll-behavior: none; }
 
 <div id="servOv" class="overlay hidden"><div class="card">
   <h2>Corriger le service</h2><p id="servText"></p>
+  <div id="servDbl" class="hidden">
+    <label>Qui sert maintenant ?</label>
+    <div class="choices four" id="svDS"><button class="choice on" data-v="0"></button><button class="choice" data-v="1"></button><button class="choice" data-v="2"></button><button class="choice" data-v="3"></button></div>
+    <label>Qui reçoit ?</label>
+    <div class="choices two" id="svDR"><button class="choice on" data-v="0"></button><button class="choice" data-v="1"></button></div>
+  </div>
   <button class="go" id="servYes">Oui, corriger</button>
   <button id="servNo">Non</button>
 </div></div>
@@ -580,6 +586,7 @@ html, body { overscroll-behavior: none; }
   // S.dsrv[g] : joueur (0/1) de la paire qui sert qui sert en premier dans la manche g ;
   // S.drec0 : joueur (0/1) de la paire qui reçoit qui reçoit en premier dans la 1re manche.
   function premierRecev(g, a) {
+    if (S.drecFix && S.drecFix[g] !== undefined) return S.drecFix[g]; // fixé par une correction du service
     if (g === 0) return S.drec0 || 0;
     var ap = S.dsrv[g - 1] || 0, bp = premierRecev(g - 1, ap);
     return a === bp ? ap : 1 - ap;
@@ -591,6 +598,28 @@ html, body { overscroll-behavior: none; }
     var x = seq[k % 4];
     return { srv: x[0], rec: x[1] };
   }
+  // Correction en double : le joueur m1 du côté S1 sert maintenant au joueur m2 de l'autre côté.
+  // On retrouve le premier serveur / receveur de la manche qui donnent cette situation au tour actuel.
+  function corrigerDouble(S1, m1, m2) {
+    if (RC.role === 'tel') { rcSend('dsv' + String.fromCharCode(97 + S1 * 4 + m1 * 2 + m2)); return; }
+    if (!S || !S.dsrv || S.finished || S.pending !== null) return;
+    pushUndo();
+    var g = S.gameIndex, t = S.points[0] + S.points[1], k = t < 20 ? Math.floor(t / 2) : t - 10, S2 = 1 - S1, s, a, b;
+    switch (k % 4) {
+      case 0: s = S1; a = m1; b = m2; break;          // X→Y
+      case 1: s = S2; b = m1; a = 1 - m2; break;      // Y→X'
+      case 2: s = S1; a = 1 - m1; b = 1 - m2; break;  // X'→Y'
+      default: s = S2; b = 1 - m1; a = m2;            // Y'→X
+    }
+    S.firstServer = ((s - g) % 2 + 2) % 2;
+    S.dsrv[g] = a;
+    if (isDeciding() && S.decSwapped) b = 1 - b;
+    S.drecFix = S.drecFix || {};
+    S.drecFix[g] = b;
+    save(); render();
+    toast('Service corrigé : ' + membres(S1)[m1] + ' sert à ' + membres(S2)[m2]);
+  }
+
   function infoDouble() {
     if (!S || !S.dsrv || membres(0).length < 2 || S.pending !== null || S.finished) return null;
     var t = S.points[0] + S.points[1];
@@ -1005,6 +1034,7 @@ html, body { overscroll-behavior: none; }
     else if (m[0] === 'manche') perteManche(p);
     else if (m[0] === 'disq') disqualifier(p);
     else if (m[0] === 'serv') changerServeur();
+    else if (/^dsv[a-h]$/.test(m[0])) { var c = m[0].charCodeAt(3) - 97; corrigerDouble(c >> 2, (c >> 1) & 1, c & 1); }
   }
 
   // Téléphone : envoie une commande ; le point s'affiche tout de suite, la tablette confirme ensuite
@@ -1501,6 +1531,9 @@ html, body { overscroll-behavior: none; }
       var a = selected('dbl1'), b = selected('dbl2');
       if (a.length !== 2 || b.length !== 2) { toast('Choisissez 2 joueurs par club'); return; }
       R.dbl[i === 8 ? 0 : 1] = { a: a, b: b };
+      // L'autre double est joué par les deux autres joueurs de chaque club (s'il n'a pas déjà été joué)
+      var autre = i === 8 ? 9 : 8, reste = function (x) { return [0, 1, 2, 3].filter(function (k) { return x.indexOf(k) < 0; }); };
+      if (!R.res[autre]) R.dbl[autre === 8 ? 0 : 1] = { a: reste(a), b: reste(b) };
       saveRenc(R);
       rencPush({ dbl: R.dbl }); // composition visible sur les autres tablettes
     }
@@ -1720,12 +1753,32 @@ html, body { overscroll-behavior: none; }
   // (touchstart) peut se refermer tout seul sur iPad / iPhone et la correction ne se faisait pas.
   tap($('servBtn'), function () {
     if (!S || S.finished) return;
-    $('servText').textContent = S.pending === null
-      ? S.names[server()] + ' sert actuellement. ' + S.names[1 - server()] + ' servira à la place.'
-      : 'Le premier serveur des manches suivantes sera inversé.';
+    var di = infoDouble();
+    if (di) {
+      // Double : on désigne le serveur (4 joueurs) et le receveur (2 adversaires)
+      $('servText').textContent = 'Actuellement : ' + membres(di.srv[0])[di.srv[1]] + ' sert à ' + membres(di.rec[0])[di.rec[1]] + '.';
+      setChoice('svDS', di.srv[0] * 2 + di.srv[1]); setChoice('svDR', di.rec[1]);
+      majServCorr(); show($('servDbl'));
+    } else {
+      hide($('servDbl'));
+      $('servText').textContent = S.pending === null
+        ? S.names[server()] + ' sert actuellement. ' + S.names[1 - server()] + ' servira à la place.'
+        : 'Le premier serveur des manches suivantes sera inversé.';
+    }
     show($('servOv'));
   });
-  tap($('servYes'), function () { hide($('servOv')); changerServeur(); });
+  function majServCorr() {
+    var ds = $('svDS').children, dr = $('svDR').children, cote = Math.floor(choiceVal('svDS') / 2);
+    for (var k = 0; k < 4; k++) ds[k].textContent = membres(Math.floor(k / 2))[k % 2];
+    dr[0].textContent = membres(1 - cote)[0]; dr[1].textContent = membres(1 - cote)[1];
+  }
+  choiceGroup('svDS'); choiceGroup('svDR');
+  [].forEach.call($('svDS').children, function (b) { tap(b, majServCorr); });
+  tap($('servYes'), function () {
+    hide($('servOv'));
+    if ($('servDbl').classList.contains('hidden')) changerServeur();
+    else { var v = choiceVal('svDS'); corrigerDouble(Math.floor(v / 2), v % 2, choiceVal('svDR')); }
+  });
   tap($('servNo'), function () { hide($('servOv')); });
   tap($('cardClose'), function () { hide($('cardOv')); });
   $('cardList').addEventListener('click', function (ev) {

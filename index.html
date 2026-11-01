@@ -158,6 +158,15 @@ button { font-family: inherit; cursor: pointer; }
   background: #33405a; color: #fff; }
 #rcBtn.on { background: #1f7a45; }
 
+/* Rencontre partagée entre plusieurs tablettes */
+#tJoin { margin-top: 22px; padding-top: 6px; border-top: 1px solid #33405a; }
+.joinRow { overflow: hidden; }
+.joinRow input { float: left; width: 55% !important; font-size: 26px !important; letter-spacing: 0.2em; text-align: center; }
+.joinRow button { float: right; width: 40%; padding: 14px 0; font-size: 19px; border: 0; border-radius: 8px; background: #2f7cf6; color: #fff; }
+#teamHead .code { margin-top: 8px; font-size: 15px; color: #9fb0c8; }
+#teamHead .code b { color: #f5c400; font-size: 22px; letter-spacing: 0.12em; }
+.prow.away { border-color: #2f7cf6; } .prow.away .ps { color: #7fb0ff; }
+
 /* Cartons : petits rectangles jaune / rouge (pas d'émoji, absents de l'iPad 2) */
 .cy, .cr { display: inline-block; width: 14px; height: 19px; border-radius: 2px; vertical-align: middle; margin: 0 2px;
   box-shadow: 0 0 0 1px rgba(0,0,0,0.35); }
@@ -267,6 +276,14 @@ html, body { overscroll-behavior: none; }
           <button class="choice" data-v="7">7 manches</button>
         </div>
         <button class="bigBtn" id="tCreate">Créer la rencontre</button>
+        <div id="tJoin">
+          <label for="tJoinCode">Ou rejoindre une rencontre déjà ouverte sur une autre tablette :</label>
+          <div class="joinRow">
+            <input type="tel" id="tJoinCode" maxlength="4" placeholder="Code" autocomplete="off" pattern="[0-9]*">
+            <button id="tJoinBtn">Rejoindre</button>
+          </div>
+          <p id="tJoinErr" class="rcErr"></p>
+        </div>
       </div>
       <div id="teamView" class="hidden">
         <div id="teamHead"></div>
@@ -758,6 +775,7 @@ html, body { overscroll-behavior: none; }
       for (var k in (S.off || {})) if (S.off.hasOwnProperty(k)) R.off[k] = Math.max(R.off[k] || 0, S.off[k]);
       R.coach = [Math.max((R.coach || [0, 0])[0], (S.coach || [0, 0])[0]), Math.max((R.coach || [0, 0])[1], (S.coach || [0, 0])[1])];
       saveRenc(R);
+      rencPush({ off: R.off, coach: R.coach }); // cartons connus des autres tablettes
     }
     var q = getQueue();
     q.push(rec);
@@ -1188,7 +1206,7 @@ html, body { overscroll-behavior: none; }
     $('simpleSec').className = m === 'simple' ? '' : 'hidden';
     $('teamSec').className = m === 'team' ? '' : 'hidden';
     $('setup').className = m === 'team' ? 'wide' : '';
-    if (m === 'team') renderTeam();
+    if (m === 'team') { renderTeam(); rencSync(); }
   }
 
   function fillTeamForm(R) {
@@ -1198,6 +1216,91 @@ html, body { overscroll-behavior: none; }
     for (var i = 0; i < 4; i++) { $('tA' + i).value = R ? R.p1[i] : ''; $('tB' + i).value = R ? R.p2[i] : ''; }
     setChoice('bestOfT', R ? R.bestOf : 5);
     $('tCreate').textContent = R ? 'Valider les noms' : 'Créer la rencontre';
+    $('tJoin').className = R ? 'hidden' : '';
+  }
+
+  // ---------- Rencontre partagée : plusieurs tablettes (une par table) sur la même rencontre ----------
+  // Chaque rencontre reçoit un code à 4 chiffres. Les autres tablettes la rejoignent avec ce code
+  // et voient les mêmes joueurs, doubles et cartons, les résultats et les parties en cours ailleurs.
+  var rencBusy = false;
+
+  function rencDef(R) {
+    return { id: R.id, journee: R.journee, clubs: R.clubs, p1: R.p1, p2: R.p2, bestOf: R.bestOf,
+             off: R.off || {}, coach: R.coach || [0, 0], dbl: R.dbl || [null, null] };
+  }
+
+  function rencPartager(R) {
+    if (!apiOk() || R.code || rencBusy) return;
+    rencBusy = true;
+    jsonp({ action: 'renc_new', r: JSON.stringify(rencDef(R)) }, function (err, d) {
+      rencBusy = false;
+      if (err || !d || !d.ok) return; // hors ligne : nouvel essai à la prochaine synchronisation
+      var R2 = loadRenc();
+      if (R2 && R2.id === R.id) { R2.code = d.code; saveRenc(R2); if (!teamEditing) renderTeam(); }
+    });
+  }
+
+  function rencPush(maj) {
+    var R = loadRenc();
+    if (!R || !R.code || !apiOk()) return;
+    jsonp({ action: 'renc_maj', code: R.code, maj: JSON.stringify(maj) }, function () {});
+  }
+
+  // Applique ce que renvoie le serveur (renc_get) à la rencontre de la tablette
+  function rencFusion(R, d) {
+    var o = d.r;
+    R.journee = o.journee; R.clubs = o.clubs; R.p1 = o.p1; R.p2 = o.p2; R.bestOf = o.bestOf;
+    R.dbl = R.dbl || [null, null];
+    for (var k = 0; k < 2; k++) if (o.dbl && o.dbl[k]) R.dbl[k] = o.dbl[k];
+    R.off = R.off || {};
+    for (var n in (o.off || {})) if (o.off.hasOwnProperty(n)) R.off[n] = Math.max(R.off[n] || 0, o.off[n]);
+    var c = R.coach || [0, 0], oc = o.coach || [0, 0];
+    R.coach = [Math.max(c[0], oc[0]), Math.max(c[1], oc[1])];
+    for (var i = 0; i < (d.res || []).length; i++) {
+      var x = d.res[i];
+      if (x.i >= 0 && x.i < ORDRE.length) R.res[x.i] = { g: x.g, n: x.n, w: x.w, detail: x.detail };
+    }
+    R.ailleurs = {};
+    for (i = 0; i < (d.live || []).length; i++) R.ailleurs[d.live[i].i] = d.live[i];
+  }
+
+  function rencSync() {
+    var R = loadRenc();
+    if (!R || !apiOk() || rencBusy) return;
+    if (!R.code) { rencPartager(R); return; }
+    rencBusy = true;
+    jsonp({ action: 'renc_get', code: R.code }, function (err, d) {
+      rencBusy = false;
+      if (err || !d) return;
+      var R2 = loadRenc();
+      if (!R2 || R2.id !== R.id) return;
+      if (d.perdu) { R2.code = null; saveRenc(R2); return; } // code expiré : la rencontre sera de nouveau partagée
+      if (!d.ok || d.r.id !== R2.id) return;
+      rencFusion(R2, d);
+      saveRenc(R2);
+      if (!teamEditing && !$('teamSec').classList.contains('hidden')) renderTeam();
+    });
+  }
+
+  function rencJoin() {
+    var code = $('tJoinCode').value.replace(/\D/g, '');
+    if (code.length !== 4) { $('tJoinErr').textContent = 'Le code a 4 chiffres.'; return; }
+    if (!apiOk()) { $('tJoinErr').textContent = 'Serveur non configuré.'; return; }
+    $('tJoinCode').blur();
+    $('tJoinErr').textContent = 'Connexion…';
+    jsonp({ action: 'renc_get', code: code }, function (err, d) {
+      if (err || !d) { $('tJoinErr').textContent = 'Pas de connexion.'; return; }
+      if (!d.ok) { $('tJoinErr').textContent = d.erreur || 'Code refusé.'; return; }
+      var R = { id: d.r.id, code: code, res: [], dbl: [null, null], off: {}, coach: [0, 0] };
+      for (var i = 0; i < ORDRE.length; i++) R.res[i] = null;
+      rencFusion(R, d);
+      saveRenc(R);
+      $('tJoinErr').textContent = ''; $('tJoinCode').value = '';
+      teamEditing = false;
+      fillTeamForm(R);
+      renderTeam();
+      toast('Rencontre rejointe ✓');
+    });
   }
 
   function renderTeam() {
@@ -1206,21 +1309,25 @@ html, body { overscroll-behavior: none; }
     hide($('teamForm')); show($('teamView'));
     var sc = teamScore(R);
     $('teamHead').innerHTML = '<div class="d">Journée du ' + esc(frDay(R.journee)) + ' · parties en ' + R.bestOf + ' manches</div>' +
-      '<div class="sc"><span class="c1">' + esc(R.clubs[0]) + '</span><b>' + sc[0] + '</b>–<b>' + sc[1] + '</b><span class="c2">' + esc(R.clubs[1]) + '</span></div>';
+      '<div class="sc"><span class="c1">' + esc(R.clubs[0]) + '</span><b>' + sc[0] + '</b>–<b>' + sc[1] + '</b><span class="c2">' + esc(R.clubs[1]) + '</span></div>' +
+      '<div class="code">' + (R.code ? 'Code de la rencontre : <b>' + R.code + '</b> — à saisir sur les autres tablettes'
+        : apiOk() ? 'Partage avec les autres tablettes : en attente de connexion…' : '') + '</div>';
     var list = $('partieList');
     list.innerHTML = '';
     for (var i = 0; i < ORDRE.length; i++) {
       var res = R.res[i], names = partieNames(R, i);
       var cur = S && !S.finished && S.renc && S.renc.id === R.id && S.renc.idx === i;
+      var aill = !res && !cur && R.ailleurs && R.ailleurs[i]; // partie en cours sur une autre tablette
       var b = document.createElement('button');
-      b.className = 'prow' + (isDouble(i) ? ' dbl' : '') + (res ? ' done' : '') + (cur ? ' cur' : '');
+      b.className = 'prow' + (isDouble(i) ? ' dbl' : '') + (res ? ' done' : '') + (cur ? ' cur' : '') + (aill ? ' away' : '');
       var nm;
       if (res) {
         var w = res.w !== undefined ? res.w : (res.g[0] > res.g[1] ? 0 : 1);
         nm = (w === 0 ? '<b class="w">' + esc(res.n[0]) + '</b>' : esc(res.n[0])) + ' – ' + (w === 1 ? '<b class="w">' + esc(res.n[1]) + '</b>' : esc(res.n[1]));
       } else nm = names ? esc(names[0]) + ' – ' + esc(names[1]) : '<span style="color:#9fb0c8">joueurs à choisir</span>';
       b.innerHTML = '<span class="pn">' + (i + 1) + '.</span><span class="pl">' + plabel(i).replace(/^([A-D])([W-Z])$/, '$1 – $2') + '</span>' +
-        '<span class="pm">' + nm + '</span><span class="ps">' + (res ? res.g[0] + ' – ' + res.g[1] : cur ? 'en cours ▶' : 'à jouer') + '</span>' +
+        '<span class="pm">' + nm + '</span><span class="ps">' + (res ? res.g[0] + ' – ' + res.g[1] : cur ? 'en cours ▶' :
+          aill ? 'autre table ' + aill.g[0] + '–' + aill.g[1] + ' (' + aill.p[0] + '-' + aill.p[1] + ')' : 'à jouer') + '</span>' +
         (ARBITRES[i] ? '<span class="pa">Arbitre : ' + esc(arbitre(R, i)) + '</span>' : '');
       // click (et non tap) pour laisser défiler la liste au doigt
       (function (idx) { b.addEventListener('click', function () { openPartie(idx); }, false); })(i);
@@ -1240,6 +1347,9 @@ html, body { overscroll-behavior: none; }
     saveRenc(R);
     teamEditing = false;
     renderTeam();
+    // Partage : nouvelle rencontre -> code ; noms modifiés -> envoyés aux autres tablettes
+    if (R.code) rencPush({ journee: R.journee, clubs: R.clubs, p1: R.p1, p2: R.p2, bestOf: R.bestOf });
+    else rencPartager(R);
   }
 
   function selected(id) {
@@ -1255,6 +1365,8 @@ html, body { overscroll-behavior: none; }
       toast(S.renc ? 'Partie ' + (S.renc.idx + 1) + ' en cours : terminez-la ou abandonnez-la' : 'Un match simple est en cours');
       return;
     }
+    if (!R.res[i] && R.ailleurs && R.ailleurs[i] &&
+        !window.confirm('Cette partie est en cours sur une autre tablette. L\'arbitrer quand même ici ?')) return;
     pvIdx = i;
     var names = partieNames(R, i), res = R.res[i];
     $('pvTitle').textContent = 'Partie ' + (i + 1) + ' · ' + plabel(i);
@@ -1292,6 +1404,7 @@ html, body { overscroll-behavior: none; }
       if (a.length !== 2 || b.length !== 2) { toast('Choisissez 2 joueurs par club'); return; }
       R.dbl[i === 8 ? 0 : 1] = { a: a, b: b };
       saveRenc(R);
+      rencPush({ dbl: R.dbl }); // composition visible sur les autres tablettes
     }
     names = partieNames(R, i);
     newMatch(names[0], names[1], R.bestOf, choiceVal('pvFs'));
@@ -1367,6 +1480,12 @@ html, body { overscroll-behavior: none; }
     }
   });
   tap($('tCreate'), saveTeamForm);
+  tap($('tJoinBtn'), rencJoin);
+  $('tJoinCode').addEventListener('keydown', function (e) { if (e.keyCode === 13) { e.preventDefault(); rencJoin(); } }, false);
+  // Rencontre partagée : mise à jour toutes les 10 s quand la liste des parties est affichée
+  setInterval(function () {
+    if (!$('setup').classList.contains('hidden') && getMode() === 'team' && !teamEditing && !document.hidden) rencSync();
+  }, 10000);
   tap($('tEdit'), function () { teamEditing = true; fillTeamForm(loadRenc()); renderTeam(); });
   tap($('tEnd'), function () { show($('confirmEnd')); });
   tap($('ceNo'), function () { hide($('confirmEnd')); });

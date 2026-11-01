@@ -59,6 +59,9 @@ function doGet(e) {
     if (p.action === 'rc_cmd') return reponse_(e, rcCommande_(p));
     if (p.action === 'rc_wait') return reponse_(e, rcAttendre_(p));
     if (p.action === 'rc_end') return reponse_(e, rcFin_(p));
+    if (p.action === 'renc_new') return reponse_(e, rencNouvelle_(p));
+    if (p.action === 'renc_get') return reponse_(e, rencLire_(p));
+    if (p.action === 'renc_maj') return reponse_(e, rencMaj_(p));
     if (String(p.code || '') !== CODE_CONSULTATION) {
       return reponse_(e, { ok: false, code: true, erreur: 'Code de consultation incorrect' });
     }
@@ -157,6 +160,13 @@ function purger_() {
   var limite = Utilities.formatDate(new Date(Date.now() - CONSERVATION_JOURS * 24 * 3600 * 1000),
                                     Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
   supprimerSi_(function (o) { return o.date && o.date < limite; });
+  // Rencontres partagées inutilisées depuis 3 jours
+  var tout = props.getProperties(), seuil = Date.now() - CONSERVATION_JOURS * 24 * 3600 * 1000;
+  for (var k in tout) {
+    if (k.indexOf('renc_') === 0) {
+      try { if (JSON.parse(tout[k]).t < seuil) props.deleteProperty(k); } catch (err) { props.deleteProperty(k); }
+    }
+  }
 }
 
 // ---------- Score en direct (stocké dans les propriétés du script) ----------
@@ -174,6 +184,73 @@ function majDirect_(p) {
 function arreterDirect_(p) {
   if (p.id) PropertiesService.getScriptProperties().deleteProperty('live_' + p.id);
   return { ok: true };
+}
+
+// ---------- Rencontre partagée entre plusieurs tablettes (une par table), par un code ----------
+// La rencontre (clubs, joueurs, doubles, cartons) est gardée dans les propriétés du script ;
+// les résultats viennent de la feuille et les parties en cours du direct.
+function rencCharger_(code) {
+  var v = code && PropertiesService.getScriptProperties().getProperty('renc_' + code);
+  return v ? JSON.parse(v) : null;
+}
+function rencEcrire_(code, o) {
+  o.t = Date.now();
+  PropertiesService.getScriptProperties().setProperty('renc_' + code, JSON.stringify(o));
+}
+
+function rencNouvelle_(p) {
+  var r = JSON.parse(p.r || '{}');
+  if (!r.id) return { ok: false, erreur: 'rencontre invalide' };
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    for (var i = 0; i < 40; i++) {
+      var code = String(Math.floor(1000 + Math.random() * 9000));
+      if (!rencCharger_(code)) {
+        rencEcrire_(code, { id: r.id, journee: r.journee, clubs: r.clubs, p1: r.p1, p2: r.p2, bestOf: r.bestOf,
+                            off: r.off || {}, coach: r.coach || [0, 0], dbl: r.dbl || [null, null] });
+        return { ok: true, code: code };
+      }
+    }
+    return { ok: false, erreur: 'Aucun code libre, réessayez' };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function rencLire_(p) {
+  var o = rencCharger_(p.code);
+  if (!o) return { ok: false, perdu: true, erreur: 'Code de rencontre inconnu ou expiré' };
+  var res = [];
+  lister_().forEach(function (m) {
+    if (m.rencontre_id !== o.id) return;
+    res.push({ i: Number(m.ordre) - 1, g: [Number(m.manches1) || 0, Number(m.manches2) || 0], n: [m.joueur1, m.joueur2],
+               w: m.vainqueur === m.joueur1 ? 0 : 1, detail: m.detail });
+  });
+  var live = [];
+  direct_().forEach(function (e) {
+    if (e.r && e.r.id === o.id && !e.fin) live.push({ i: e.r.i, g: e.g, p: e.p });
+  });
+  return { ok: true, r: o, res: res, live: live };
+}
+
+// Mise à jour : définition (noms…), doubles, cartons (on garde toujours le niveau le plus élevé)
+function rencMaj_(p) {
+  var maj = JSON.parse(p.maj || '{}');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var o = rencCharger_(p.code);
+    if (!o) return { ok: false, perdu: true };
+    ['journee', 'clubs', 'p1', 'p2', 'bestOf'].forEach(function (k) { if (maj[k] !== undefined) o[k] = maj[k]; });
+    if (maj.dbl) for (var d = 0; d < 2; d++) if (maj.dbl[d]) o.dbl[d] = maj.dbl[d];
+    if (maj.off) for (var n in maj.off) o.off[n] = Math.max(o.off[n] || 0, maj.off[n]);
+    if (maj.coach) o.coach = [Math.max(o.coach[0], maj.coach[0] || 0), Math.max(o.coach[1], maj.coach[1] || 0)];
+    rencEcrire_(p.code, o);
+    return { ok: true, r: o };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 // ---------- Télécommande : une tablette (affichage) et un téléphone appairés par un code ----------

@@ -157,6 +157,7 @@ button { font-family: inherit; cursor: pointer; }
 #rcSetupBtn { display: block; width: 100%; margin-top: 12px; padding: 14px; font-size: 19px; border: 0; border-radius: 10px;
   background: #33405a; color: #fff; }
 #rcBtn.on { background: #1f7a45; }
+#veilleAstuce { margin: 14px 0 0; font-size: 14px; line-height: 1.4; color: #9fb0c8; }
 
 /* Rencontre partagée entre plusieurs tablettes */
 #tJoin { margin-top: 22px; padding-top: 6px; border-top: 1px solid #33405a; }
@@ -319,6 +320,8 @@ html, body { overscroll-behavior: none; }
       <div id="syncStatus"></div>
       <a id="resultsLink" href="resultats.html">&#128203; Résultats et matchs en direct</a>
       <button id="rcSetupBtn">&#128241; Télécommande (tablette + téléphone)</button>
+      <p id="veilleAstuce" class="hidden">Cet appareil ne permet pas à l'appli d'empêcher la mise en veille.
+        Sur iPad / iPhone : <b>Réglages › Général</b> (ou <b>Luminosité et affichage</b>) › <b>Verrouillage automatique › Jamais</b>.</p>
     </div>
   </div>
 </div>
@@ -953,7 +956,7 @@ html, body { overscroll-behavior: none; }
     if (!e || !e.s) {
       S = null; tmoEnd = 0; hideTmo();
       hide($('board')); hide($('gameOver')); show($('setup'));
-      keepAwake(false); rcOpen();
+      rcOpen();
       return;
     }
     S = clone(e.s);
@@ -1090,7 +1093,7 @@ html, body { overscroll-behavior: none; }
     if (S && !S.finished && !S.renc) show($('resumeBtn')); else hide($('resumeBtn'));
     show($('setup'));
     setMode(getMode());
-    keepAwake(false);
+    activite(); // retour à l'accueil : l'écran reste allumé tant qu'on s'en sert
     fsWanted = false; exitFs();
     rcPublish();
     flushQueue();
@@ -1131,8 +1134,19 @@ html, body { overscroll-behavior: none; }
   }
   function retryFs() { if (fsWanted && !fsEl() && !$('board').classList.contains('hidden')) enterFs(); }
 
-  // Garde l'écran allumé pendant un match (téléphones/PC récents ; absent sur l'iPad 2)
-  var wakeLock = null;
+  // Garde l'écran allumé tant que l'appli est utilisée (Wake Lock : Android, PC, iPhone/iPad récents ;
+  // absent sur l'iPad 2 et les iOS antérieurs à 16.4 : y régler « Verrouillage automatique : Jamais »).
+  // Pendant un match l'écran reste toujours allumé ; ailleurs, la veille revient après 20 min sans action.
+  var wakeLock = null, derniereAction = Date.now(), VEILLE_MS = 20 * 60 * 1000;
+  function enMatch() { return !$('board').classList.contains('hidden'); }
+  function activite() {
+    derniereAction = Date.now();
+    if (!document.hidden) keepAwake(true);
+  }
+  setInterval(function () {
+    if (!enMatch() && Date.now() - derniereAction > VEILLE_MS) keepAwake(false);
+  }, 60000);
+
   function keepAwake(on) {
     if (!('wakeLock' in navigator)) return;
     if (on) {
@@ -1557,9 +1571,14 @@ html, body { overscroll-behavior: none; }
     if (handled) e.preventDefault();
   }, false);
 
+  // Le verrou est perdu quand l'appli passe en arrière-plan : on le reprend au retour, et à chaque action
   document.addEventListener('visibilitychange', function () {
-    if (!document.hidden && !$('board').classList.contains('hidden')) keepAwake(true);
+    if (!document.hidden && (enMatch() || Date.now() - derniereAction < VEILLE_MS)) keepAwake(true);
   }, false);
+  ['touchstart', 'mousedown', 'keydown'].forEach(function (t) { document.addEventListener(t, activite, true); });
+  // Sans Wake Lock (iPad 2, iOS < 16.4…) : on indique le réglage à faire sur l'appareil
+  if (!('wakeLock' in navigator) && /iPad|iPhone|iPod/.test(navigator.userAgent)) show($('veilleAstuce'));
+  activite();
 
   // Fonctionne hors ligne sur les appareils récents (l'iPad 2 n'a pas de service worker)
   if ('serviceWorker' in navigator && location.protocol === 'https:') {

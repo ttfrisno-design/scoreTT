@@ -490,6 +490,16 @@ html, body { overscroll-behavior: none; }
     return -1;
   }
 
+  // Anti-doublon : un appui (point ou « − ») dans la seconde qui suit le précédent est ignoré.
+  // Appliqué là où l'on appuie (tablette, clavier, téléphone), pas aux commandes reçues de la télécommande.
+  var DELAI_APPUI_MS = 1000, dernierAppui = 0;
+  function appuiPermis() {
+    var t = Date.now();
+    if (t - dernierAppui < DELAI_APPUI_MS) return false;
+    dernierAppui = t;
+    return true;
+  }
+
   function pushUndo() { undoStack.push(clone(S)); if (undoStack.length > 300) undoStack.shift(); }
 
   function addPoint(p) {
@@ -1456,11 +1466,12 @@ html, body { overscroll-behavior: none; }
   ['panelL', 'panelR'].forEach(function (id) {
     var el = $(id);
     tap(el, function () {
+      if (!appuiPermis()) return;
       el.classList.add('pressed');
       setTimeout(function () { el.classList.remove('pressed'); }, 120);
       addPoint(parseInt(el.getAttribute('data-p'), 10));
     });
-    tap(q(el, '.minus'), function () { removePoint(parseInt(el.getAttribute('data-p'), 10)); });
+    tap(q(el, '.minus'), function () { if (appuiPermis()) removePoint(parseInt(el.getAttribute('data-p'), 10)); });
     tap(q(el, '.tmo'), function () { startTimeout(parseInt(el.getAttribute('data-p'), 10)); });
   });
 
@@ -1572,7 +1583,7 @@ html, body { overscroll-behavior: none; }
     else if (overlay && (c === 13 || c === 32)) onNext();
     else if (!overlay && (c === 37 || c === 39)) {
       var p = parseInt($(c === 37 ? 'panelL' : 'panelR').getAttribute('data-p'), 10);
-      if (e.shiftKey) removePoint(p); else addPoint(p);
+      if (!appuiPermis()) { /* doublon ignoré */ } else if (e.shiftKey) removePoint(p); else addPoint(p);
     } else handled = false;
     if (handled) e.preventDefault();
   }, false);
